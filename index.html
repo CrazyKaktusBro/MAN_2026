@@ -3,21 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>MAN Olympiad</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
 
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #e5e5e5;
+            color: #111;
+            font-family: "Courier New", monospace;
+        }
+
+        .login {
+            width: 90%;
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: clamp(32px, 6vw, 90px);
+            font-weight: 900;
+            margin: 0 0 50px;
+            letter-spacing: 3px;
+        }
+
+        input {
+            display: block;
+            width: 100%;
+            padding: 30px 35px;
+            font-family: inherit;
+            font-size: clamp(20px, 3vw, 36px);
+            color: #111;
+            background: #fafafa;
+            border: 5px solid #111;
+            border-radius: 0;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #888;
+        }
+
+        input:focus {
+            background: #fff;
+            box-shadow: 8px 8px 0 #111;
+        }
+    </style>
+</head>
+
+<body>
     <main class="login">
         <h1>ВВЕДИТЕ МЕЙЛ</h1>
-
         <input
             type="email"
             placeholder="Ваш мейл"
             aria-label="Ваш мейл"
         >
     </main>
-
 </body>
 </html>
