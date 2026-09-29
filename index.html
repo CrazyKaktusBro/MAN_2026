@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <title>MAN Olympiad</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -11,12 +10,18 @@
 <body>
     <main class="login">
         <h1>ВВЕДІТЬ МЕЙЛ</h1>
-        
-        <input
-            type="email"
-            placeholder="Ваш_мейл@gmail.com"
-            aria-label="Ваш_мейл@gmail.com"
-        >
+
+        <form id="emailForm" novalidate>
+            <input
+                type="email"
+                id="email"
+                placeholder="Ваш_мейл@gmail.com"
+                aria-label="Ваш мейл"
+                required
+            >
+        </form>
     </main>
+
+    <script src="script.js"></script>
 </body>
 </html>
