@@ -123,3 +123,22 @@ input:focus {
 .registration button:hover {
     background: #444;
 }
+
+.registration select {
+    width: 100%;
+    padding: 25px;
+
+    font-family: inherit;
+    font-size: 28px;
+
+    background: #fafafa;
+    color: #111;
+
+    border: 5px solid #111;
+    border-radius: 0;
+}
+
+.registration select:focus {
+    outline: none;
+    box-shadow: 8px 8px 0 #111;
+}
