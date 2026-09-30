@@ -20,3 +20,21 @@ function registerOlympiad() {
 function loginOlympiad() {
     window.location.href = "login.html";
 }
+
+const registrationForm = document.getElementById("registrationForm");
+
+if (registrationForm) {
+    registrationForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        const firstName = document.getElementById("firstName").value;
+        const lastName = document.getElementById("lastName").value;
+        const middleName = document.getElementById("middleName").value;
+
+        localStorage.setItem("firstName", firstName);
+        localStorage.setItem("lastName", lastName);
+        localStorage.setItem("middleName", middleName);
+
+        window.location.href = "age.html";
+    });
+}
