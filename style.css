@@ -87,3 +87,38 @@ input:focus {
     background: #111;
     color: white;
 }
+
+.registration {
+    width: 90%;
+    max-width: 800px;
+    text-align: center;
+}
+
+.registration form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.registration input {
+    width: 100%;
+}
+
+.registration button {
+    width: 100%;
+    padding: 25px;
+
+    font-family: inherit;
+    font-size: 28px;
+    font-weight: bold;
+
+    background: #111;
+    color: white;
+
+    border: 5px solid #111;
+    cursor: pointer;
+}
+
+.registration button:hover {
+    background: #444;
+}
