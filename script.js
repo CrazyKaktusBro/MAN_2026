@@ -12,3 +12,11 @@ form.addEventListener("submit", function(event) {
         email.focus();
     }
 });
+
+function registerOlympiad() {
+    window.location.href = "register.html";
+}
+
+function loginOlympiad() {
+    window.location.href = "login.html";
+}
