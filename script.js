@@ -38,3 +38,20 @@ if (registrationForm) {
         window.location.href = "age.html";
     });
 }
+
+const continueButton = document.getElementById("continueButton");
+
+if (continueButton) {
+    continueButton.addEventListener("click", function() {
+
+        const olympiad = document.getElementById("olympiad").value;
+
+        if (olympiad === "") {
+            return;
+        }
+
+        localStorage.setItem("olympiad", olympiad);
+
+        window.location.href = "olympiad.html";
+    });
+}
