@@ -105,11 +105,12 @@ input:focus {
 }
 
 .registration button {
-    width: 100%;
-    padding: 25px;
+    width: 70%;
+    padding: 30px;
+    margin: 20px auto 0;
 
     font-family: inherit;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: bold;
 
     background: #111;
