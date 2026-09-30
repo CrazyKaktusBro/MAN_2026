@@ -5,6 +5,7 @@ form.addEventListener("submit", function(event) {
     event.preventDefault();
 
     if (email.checkValidity()) {
+        localStorage.setItem("email", email.value);
         window.location.href = "next.html";
     } else {
         email.value = "";
