@@ -66,3 +66,7 @@ function goHome() {
     localStorage.clear();
     window.location.href = "index.html";
 }
+
+if (window.location.pathname.endsWith("olympiad.html")) {
+    localStorage.clear();
+}
