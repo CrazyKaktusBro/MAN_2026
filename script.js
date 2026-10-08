@@ -61,3 +61,8 @@ if (continueButton) {
         window.location.href = "olympiad.html";
     });
 }
+
+function goHome() {
+    localStorage.clear();
+    window.location.href = "index.html";
+}
