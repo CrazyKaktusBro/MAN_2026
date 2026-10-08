@@ -142,3 +142,32 @@ input:focus {
     outline: none;
     box-shadow: 8px 8px 0 #111;
 }
+
+.success {
+    width: 90%;
+    max-width: 1200px;
+    text-align: center;
+}
+
+.success h1 {
+    margin-bottom: 60px;
+}
+
+.success button {
+    width: 70%;
+    padding: 30px;
+
+    font-family: inherit;
+    font-size: 32px;
+    font-weight: bold;
+
+    background: #111;
+    color: white;
+
+    border: 5px solid #111;
+    cursor: pointer;
+}
+
+.success button:hover {
+    background: #444;
+}
