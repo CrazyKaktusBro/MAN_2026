@@ -29,7 +29,7 @@
         const select = document.getElementById("olympiad");
         const message = document.getElementById("loadingMessage");
         const statusText = document.getElementById("olympiadStatus");
-        const continueButton = document.getElementById("continueButton");
+        const apiContinueButton = document.getElementById("continueButton");
 
         const statusNames = {
             NOT_OPEN: "Реєстрація ще не почалася",
@@ -76,14 +76,14 @@
 
             if (!selected) {
                 statusText.textContent = "";
-                continueButton.disabled = true;
+                apiContinueButton.disabled = true;
                 return;
             }
 
             const status = MockAPI.getStatus(selected);
             statusText.textContent = statusNames[status];
 
-            continueButton.disabled = status !== "REGISTRATION";
+            apiContinueButton.disabled = status !== "REGISTRATION";
         }
 
         select.addEventListener("change", updateStatus);
