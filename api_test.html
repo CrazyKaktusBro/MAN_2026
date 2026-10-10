@@ -1,0 +1,91 @@
+```html
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API — MAN 2026</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 16px;
+        }
+
+        .olympiad {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 16px;
+            margin: 14px 0;
+        }
+
+        .status {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест симуляції API</h1>
+    <p id="message">Завантаження...</p>
+    <div id="olympiads"></div>
+
+    <script src="./backend/mock_api.js"></script>
+    <script>
+        const statusNames = {
+            NOT_OPEN: "Реєстрація ще не почалася",
+            REGISTRATION: "Реєстрація відкрита",
+            WAITING: "Очікуємо початку олімпіади",
+            ACTIVE: "Олімпіада триває",
+            FINISHED: "Олімпіада завершена"
+        };
+
+        let olympiads = [];
+
+        async function init() {
+            const message = document.getElementById("message");
+
+            try {
+                olympiads = await MockAPI.getOlympiads();
+                message.textContent = "✅ Дані успішно отримано з JSON!";
+                renderOlympiads();
+                setInterval(renderOlympiads, 1000);
+            } catch (error) {
+                message.textContent = "❌ Помилка: " + error.message;
+            }
+        }
+
+        function renderOlympiads() {
+            const container = document.getElementById("olympiads");
+
+            container.replaceChildren();
+
+            olympiads.forEach(olympiad => {
+                const status = MockAPI.getStatus(olympiad);
+
+                const card = document.createElement("article");
+                card.className = "olympiad";
+
+                const title = document.createElement("h2");
+                title.textContent = olympiad.name;
+
+                const dates = document.createElement("p");
+                dates.textContent =
+                    "Початок: " +
+                    new Date(olympiad.start).toLocaleString("uk-UA");
+
+                const statusText = document.createElement("p");
+                statusText.className = "status";
+                statusText.textContent =
+                    "Статус: " + (statusNames[status] || status);
+
+                card.append(title, dates, statusText);
+                container.appendChild(card);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
+```
