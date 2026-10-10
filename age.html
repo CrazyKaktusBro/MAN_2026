@@ -1,33 +1,95 @@
+```html
 <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Оберіть олімпіаду</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
     <main class="registration">
-
         <h1>ОБЕРІТЬ ОЛІМПІАДУ</h1>
 
-        <select id="olympiad">
+        <p id="loadingMessage">Завантаження олімпіад...</p>
+
+        <select id="olympiad" disabled>
             <option value="" selected disabled>Оберіть олімпіаду</option>
-            <option value="math">Математика</option>
-            <option value="informatics">Інформатика</option>
-            <option value="physics">Фізика</option>
         </select>
 
-        <button id="continueButton">
-            ДАЛІ
-        </button>
+        <p id="olympiadStatus"></p>
 
+        <button id="continueButton" disabled>ДАЛІ</button>
     </main>
 
+    <script src="./backend/mock_api.js"></script>
     <script src="script.js"></script>
 
+    <script>
+        const select = document.getElementById("olympiad");
+        const message = document.getElementById("loadingMessage");
+        const statusText = document.getElementById("olympiadStatus");
+        const continueButton = document.getElementById("continueButton");
+
+        const statusNames = {
+            NOT_OPEN: "Реєстрація ще не почалася",
+            REGISTRATION: "Реєстрація відкрита",
+            WAITING: "Реєстрацію завершено, очікуємо початку",
+            ACTIVE: "Олімпіада триває",
+            FINISHED: "Олімпіада завершена"
+        };
+
+        let olympiads = [];
+
+        async function loadOlympiads() {
+            try {
+                olympiads = await MockAPI.getOlympiads();
+
+                select.replaceChildren(
+                    new Option("Оберіть олімпіаду", "", true, true)
+                );
+                select.options[0].disabled = true;
+
+                olympiads.forEach(olympiad => {
+                    const option = new Option(
+                        olympiad.name,
+                        String(olympiad.id)
+                    );
+
+                    select.add(option);
+                });
+
+                select.disabled = false;
+                message.textContent = "";
+                updateStatus();
+            } catch (error) {
+                message.textContent =
+                    "Не вдалося завантажити олімпіади. Оновіть сторінку.";
+                console.error(error);
+            }
+        }
+
+        function updateStatus() {
+            const selected = olympiads.find(
+                olympiad => String(olympiad.id) === select.value
+            );
+
+            if (!selected) {
+                statusText.textContent = "";
+                continueButton.disabled = true;
+                return;
+            }
+
+            const status = MockAPI.getStatus(selected);
+            statusText.textContent = statusNames[status];
+
+            continueButton.disabled = status !== "REGISTRATION";
+        }
+
+        select.addEventListener("change", updateStatus);
+
+        loadOlympiads();
+    </script>
 </body>
 </html>
+```
