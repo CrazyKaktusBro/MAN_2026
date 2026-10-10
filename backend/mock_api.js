@@ -1,6 +1,6 @@
 const MockAPI = {
     async getOlympiads() {
-        const response = await fetch("./backend/olympiads.json");
+        const response = await fetch("./backend/storage/olympiads.json");
 
         if (!response.ok) {
             throw new Error("Не удалось загрузить олимпиады");
