@@ -32,3 +32,5 @@ const MockAPI = {
         return "FINISHED";
     }
 };
+
+window.MockAPI = MockAPI;
