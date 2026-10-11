@@ -66,7 +66,7 @@ const MockAPI = {
         do {
             participantCode = "";
 
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 10; i++) {
                 participantCode += characters[
                     Math.floor(Math.random() * characters.length)
                 ];
