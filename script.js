@@ -46,6 +46,7 @@ if (registrationForm) {
 
 
 
+
 const continueButton = document.getElementById("continueButton");
 
 if (continueButton) {
@@ -74,6 +75,7 @@ if (continueButton) {
         }
     });
 }
+
 
 
 function goHome() {
