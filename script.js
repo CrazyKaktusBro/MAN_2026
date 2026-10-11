@@ -82,5 +82,11 @@ function goHome() {
 }
 
 if (window.location.pathname.endsWith("olympiad.html")) {
-    localStorage.clear();
+    [
+        "email",
+        "firstName",
+        "lastName",
+        "middleName",
+        "olympiad"
+    ].forEach(key => localStorage.removeItem(key));
 }
