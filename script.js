@@ -45,11 +45,11 @@ if (registrationForm) {
 }
 
 
+
 const continueButton = document.getElementById("continueButton");
 
 if (continueButton) {
-    continueButton.addEventListener("click", function() {
-
+    continueButton.addEventListener("click", async function() {
         const olympiad = document.getElementById("olympiad").value;
 
         if (olympiad === "") {
@@ -57,10 +57,24 @@ if (continueButton) {
         }
 
         localStorage.setItem("olympiad", olympiad);
+        continueButton.disabled = true;
 
-        window.location.href = "olympiad.html";
+        try {
+            const participant = await MockAPI.registerParticipant();
+
+            localStorage.setItem(
+                "lastParticipantCode",
+                participant.participantCode
+            );
+
+            window.location.href = "olympiad.html";
+        } catch (error) {
+            alert("Помилка реєстрації: " + error.message);
+            continueButton.disabled = false;
+        }
     });
 }
+
 
 function goHome() {
     localStorage.clear();
