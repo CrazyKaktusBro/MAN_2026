@@ -186,3 +186,21 @@ input:focus {
 .login-page button {
     margin: 10px 0;
 }
+
+
+.login-page button {
+    width: 70%;
+    padding: 30px;
+    margin: 20px auto 0;
+    font-family: inherit;
+    font-size: 32px;
+    font-weight: bold;
+    background: #111;
+    color: white;
+    border: 5px solid #111;
+    cursor: pointer;
+}
+
+.login-page button:hover {
+    background: #444;
+}
