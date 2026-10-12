@@ -1,4 +1,3 @@
-
 const MockAPI = {
     async getOlympiads() {
         const response = await fetch("./backend/storage/olympiads.json");
@@ -46,6 +45,16 @@ const MockAPI = {
         if (now < start) return "WAITING";
         if (now < end) return "ACTIVE";
         return "FINISHED";
+    },
+
+    getParticipantByCode(code) {
+        const participants = JSON.parse(
+            localStorage.getItem("participants") || "[]"
+        );
+    
+        return participants.find(
+            participant => participant.participantCode === code
+        ) || null;
     },
 
     async registerParticipant() {
