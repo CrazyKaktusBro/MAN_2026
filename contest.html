@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Олімпіада</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1 id="contestTitle">ЗАВАНТАЖЕННЯ ОЛІМПІАДИ...</h1>
+
+    <p id="contestMessage"></p>
+    <div id="tasks"></div>
+
+    <script src="./backend/mock_api.js"></script>
+    <script>
+        const contestTitle = document.getElementById("contestTitle");
+        const contestMessage = document.getElementById("contestMessage");
+        const tasksContainer = document.getElementById("tasks");
+
+        async function loadContest() {
+            const code = localStorage.getItem("activeParticipantCode");
+            const olympiadId = localStorage.getItem("activeOlympiadId");
+
+            if (!code || !olympiadId) {
+                contestTitle.textContent = "ДОСТУП ЗАБОРОНЕНО";
+                contestMessage.textContent = "Спочатку увійдіть за кодом сесії.";
+                return;
+            }
+
+            try {
+                const participant = MockAPI.getParticipantByCode(code);
+
+                if (!participant ||
+                    String(participant.olympiadId) !== String(olympiadId)) {
+                    throw new Error("Сесію не знайдено");
+                }
+
+                const olympiads = await MockAPI.getOlympiads();
+                const olympiad = olympiads.find(
+                    item => String(item.id) === String(olympiadId)
+                );
+
+                if (!olympiad || olympiad.status !== "ACTIVE") {
+                    throw new Error("Олімпіада зараз недоступна");
+                }
+
+                const tasks = await MockAPI.getTasks(olympiadId);
+
+                contestTitle.textContent = olympiad.name;
+                contestMessage.textContent =
+                    "Кількість завдань: " + tasks.length;
+
+                tasks.forEach((task, index) => {
+                    const article = document.createElement("article");
+                    const title = document.createElement("h2");
+                    const text = document.createElement("p");
+                    const points = document.createElement("p");
+
+                    title.textContent = (index + 1) + ". " + task.title;
+                    text.textContent = task.text;
+                    points.textContent = "Бали: " + task.points;
+
+                    article.append(title, text, points);
+                    tasksContainer.appendChild(article);
+                });
+            } catch (error) {
+                contestTitle.textContent = "НЕ ВДАЛОСЯ ВІДКРИТИ ОЛІМПІАДУ";
+                contestMessage.textContent = error.message;
+            }
+        }
+
+        loadContest();
+    </script>
+</body>
+</html>
