@@ -79,7 +79,14 @@ if (continueButton) {
 
 
 function goHome() {
-    localStorage.clear();
+    [
+        "email",
+        "firstName",
+        "lastName",
+        "middleName",
+        "olympiad",
+        "lastParticipantCode"
+    ].forEach(key => localStorage.removeItem(key));
     window.location.href = "index.html";
 }
 
