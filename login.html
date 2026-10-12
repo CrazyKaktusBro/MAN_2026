@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вхід на олімпіаду</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>ВХІД НА ОЛІМПІАДУ</h1>
+
+    <p>Введіть код сесії</p>
+
+    <input
+        type="text"
+        id="sessionCode"
+        placeholder="Код сесії"
+        maxlength="10"
+        autocomplete="off"
+    >
+
+    <p id="loginMessage"></p>
+
+    <button id="loginButton">УВІЙТИ</button>
+
+    <script src="./backend/mock_api.js"></script>
+    <script src="script.js"></script>
+    <script>
+        const sessionCodeInput = document.getElementById("sessionCode");
+        const loginButton = document.getElementById("loginButton");
+        const loginMessage = document.getElementById("loginMessage");
+
+        loginButton.addEventListener("click", async function () {
+            const code = sessionCodeInput.value.trim();
+
+            if (code === "") {
+                loginMessage.textContent = "Введіть код сесії";
+                return;
+            }
+
+            loginButton.disabled = true;
+            loginMessage.textContent = "Перевіряємо код...";
+
+            try {
+                const participant = await MockAPI.getParticipantByCode(code);
+
+                if (!participant) {
+                    loginMessage.textContent = "Невірний код сесії";
+                    return;
+                }
+
+                const olympiads = await MockAPI.getOlympiads();
+                const olympiad = olympiads.find(
+                    item => String(item.id) === String(participant.olympiadId)
+                );
+
+                if (!olympiad) {
+                    loginMessage.textContent = "Олімпіаду не знайдено";
+                    return;
+                }
+
+                if (olympiad.status !== "ACTIVE") {
+                    loginMessage.textContent = "Олімпіада зараз недоступна";
+                    return;
+                }
+
+                localStorage.setItem("activeParticipantCode", participant.participantCode);
+                localStorage.setItem("activeOlympiadId", olympiad.id);
+
+                window.location.href = "contest.html";
+            } catch (error) {
+                loginMessage.textContent = "Помилка: " + error.message;
+            } finally {
+                loginButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
