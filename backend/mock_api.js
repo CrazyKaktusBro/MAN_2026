@@ -15,6 +15,23 @@ const MockAPI = {
         }));
     },
 
+    async getTasks(olympiadId) {
+        const response = await fetch("./backend/storage/tasks.json");
+    
+        if (!response.ok) {
+            throw new Error("Не вдалося завантажити завдання");
+        }
+    
+        const tasksByOlympiad = await response.json();
+        const tasks = tasksByOlympiad[String(olympiadId)];
+    
+        if (!tasks) {
+            throw new Error("Для цієї олімпіади завдань немає");
+        }
+    
+        return tasks;
+    },
+    
     getStatus(olympiad) {
         const now = Date.now();
         const registrationStart =
