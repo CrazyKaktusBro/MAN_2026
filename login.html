@@ -9,7 +9,7 @@
 <body>
     <h1>ВХІД НА ОЛІМПІАДУ</h1>
 
-    <p>Введіть код сесії</p>
+    <h2>Введіть код сесії</h2>
 
     <input
         type="text"
@@ -19,7 +19,7 @@
         autocomplete="off"
     >
 
-    <p id="loginMessage"></p>
+    <h2 id="loginMessage"></h2>
 
     <button id="loginButton">УВІЙТИ</button>
 
@@ -42,7 +42,7 @@
             loginMessage.textContent = "Перевіряємо код...";
 
             try {
-                const participant = await MockAPI.getParticipantByCode(code);
+                const participant = MockAPI.getParticipantByCode(code);
 
                 if (!participant) {
                     loginMessage.textContent = "Невірний код сесії";
