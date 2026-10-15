@@ -31,19 +31,26 @@ const MockAPI = {
         return tasks;
     },
     
+
     getStatus(olympiad) {
         const now = Date.now();
+    
         const registrationStart =
             new Date(olympiad.registration_start).getTime();
         const registrationEnd =
             new Date(olympiad.registration_end).getTime();
         const start = new Date(olympiad.start).getTime();
         const end = new Date(olympiad.end).getTime();
-
+    
         if (now < registrationStart) return "NOT_OPEN";
-        if (now <= registrationEnd) return "REGISTRATION";
-        if (now < start) return "WAITING";
+    
+        if (now < start) {
+            if (now <= registrationEnd) return "REGISTRATION";
+            return "WAITING";
+        }
+    
         if (now < end) return "ACTIVE";
+    
         return "FINISHED";
     },
 
