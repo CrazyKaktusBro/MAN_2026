@@ -39,7 +39,11 @@ button:hover{opacity:.85}
 
 <section id="s-email" class="on">
   <h1>Вхід</h1>
-  <p id="note" class="ok" hidden>Реєстрацію завершено. Увійдіть знову, щоб продовжити.</p>
+  <div id="note" hidden>
+    <p class="ok">Реєстрацію завершено. Ваш код доступу:</p>
+    <div id="mycode" style="font:600 2rem/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;margin:12px 0;user-select:all"></div>
+    <p>Збережіть його: він потрібен для входу на олімпіаду. <span id="mailed"></span></p>
+  </div>
   <label for="email"><p>Електронна пошта</p></label>
   <input id="email" type="email" placeholder="name@example.com" autocomplete="email">
   <div id="e-err" class="err"></div>
@@ -73,8 +77,8 @@ button:hover{opacity:.85}
 
 <section id="s-code">
   <h1>Код доступу</h1>
-  <label for="code"><p>Введіть 8-значний код</p></label>
-  <input id="code" type="text" inputmode="numeric" maxlength="8" placeholder="00000000" autocomplete="one-time-code">
+  <label for="code"><p>Введіть код доступу (8 літер і цифр)</p></label>
+  <input id="code" type="text" maxlength="8" placeholder="XXXXXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase;letter-spacing:.12em">
   <div id="c-err" class="err"></div>
   <button id="b-code">Увійти</button>
   <button class="back" data-go="s-choice">Назад</button>
@@ -102,7 +106,7 @@ var TASKS=[
  "Скільки існує тризначних чисел, сума цифр яких дорівнює 5?",
  "У прямокутному трикутнику катети дорівнюють 6 і 8. Знайдіть радіус вписаного кола."
 ];
-var CODE="12345678", st={email:"",fio:"",olymp:""};
+var st={email:"",fio:"",olymp:""};
 function $(i){return document.getElementById(i)}
 function show(id){
   document.querySelectorAll("section").forEach(function(s){s.classList.toggle("on",s.id===id)});
@@ -143,17 +147,31 @@ $("b-pick").onclick=function(){
   .then(function(d){
     if(!d.ok)throw new Error(d.error||"error");
     $("email").value="";$("fio").value="";r.checked=false;
+    $("mycode").textContent=d.code;
+    $("mailed").textContent=d.mailed?"Копію також надіслано на вашу пошту.":"";
     $("note").hidden=false;show("s-email");
   })
-  .catch(function(){$("p-err").textContent="Не вдалося зберегти. Спробуйте ще раз."})
+  .catch(function(e){$("p-err").textContent=(e&&e.message==="exists")?"Цю пошту вже зареєстровано.":"Не вдалося зберегти. Спробуйте ще раз."})
   .finally(function(){btn.disabled=false;btn.textContent="Завершити реєстрацію"});
 };
 // login: code
 function enter(){
-  if($("code").value.trim()!==CODE){$("c-err").textContent="Невірний код. Спробуйте ще раз.";return}
-  $("c-err").textContent="";
+  var c=$("code").value.trim().toUpperCase();
+  if(c.length!==8){$("c-err").textContent="Код має містити 8 символів.";return}
+  var btn=$("b-code");btn.disabled=true;btn.textContent="Перевірка…";
+  fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({action:"login",code:c})})
+  .then(function(x){return x.json()})
+  .then(function(d){
+    if(!d.ok)throw new Error("bad");
+    $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;openExam();
+  })
+  .catch(function(){$("c-err").textContent="Невірний код або немає зв’язку. Спробуйте ще раз."})
+  .finally(function(){btn.disabled=false;btn.textContent="Увійти"});
+}
+function openExam(){
   $("ex-title").textContent=st.olymp||"Олімпіада";
-  $("ex-who").textContent=st.email;
+  $("ex-who").textContent=st.fio;
   $("tasks").innerHTML=TASKS.map(function(t,i){
     return '<div class="task"><span class="meta">Завдання '+(i+1)+' з '+TASKS.length+'</span><h2>'+t+'</h2>'+
     '<input type="text" aria-label="Відповідь до завдання '+(i+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
