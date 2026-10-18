@@ -201,17 +201,6 @@ async function renderPdf(bytes,box){
     img.src=cv.toDataURL("image/jpeg",.85);box.appendChild(img);
   }
 }
-var GH={repo:"CrazyKaktusBro/MAN_2026",dir:"olympiads",branch:"main"};
-var FOLDERS={"Математика":"math","Фізика":"physics","Інформатика":"informatics","Українська мова":"ukrainian","Хімія":"chemistry"};
-async function listTasks(olymp){
-  var f=FOLDERS[olymp];if(!f)throw new Error("folder");
-  var r=await fetch("https://api.github.com/repos/"+GH.repo+"/contents/"+GH.dir+"/"+f+"?ref="+GH.branch);
-  if(!r.ok)throw new Error("list");
-  var a=await r.json();
-  return a.filter(function(x){return x.type==="file"&&/\.pdf$/i.test(x.name)})
-    .sort(function(x,y){return x.name.localeCompare(y.name,"uk",{numeric:true})})
-    .map(function(x){return x.download_url});
-}
 async function openExam(){
   $("ex-title").textContent=st.olymp||"Олімпіада";
   $("ex-who").textContent=st.fio;
@@ -219,15 +208,15 @@ async function openExam(){
   $("x-err").textContent="";$("b-send").hidden=true;
   show("s-exam");
   try{
-    var files=await listTasks(st.olymp);
-    if(!files.length)throw new Error("none");
-    $("tasks").innerHTML=files.map(function(f,k){
-      return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
+    var r=await api({action:"files",code:st.code});
+    if(!r.ok||!r.files.length)throw new Error("none");
+    $("tasks").innerHTML=r.files.map(function(f,k){
+      return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+r.files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
       '<input type="text" aria-label="Відповідь до завдання '+(k+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
-    for(var i=0;i<files.length;i++){
-      var box=$("pg"+i),res=await fetch(files[i]);
-      if(!res.ok)throw new Error("pdf");
-      box.innerHTML="";await renderPdf(new Uint8Array(await res.arrayBuffer()),box);
+    for(var i=0;i<r.files.length;i++){
+      var box=$("pg"+i),p=await api({action:"pdf",code:st.code,id:r.files[i].id});
+      if(!p.ok)throw new Error("pdf");
+      box.innerHTML="";await renderPdf(b64ToBytes(p.b64),box);
     }
     $("b-send").hidden=false;
   }catch(e){
