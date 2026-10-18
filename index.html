@@ -32,6 +32,10 @@ button:hover{opacity:.85}
 .task{display:flex;flex-direction:column;gap:12px;padding-bottom:28px;border-bottom:1px solid var(--line)}
 .task .meta{color:var(--mute);font-size:.85rem}
 .back{background:none;border:0;color:var(--mute);width:auto;padding:0;text-align:left;font-weight:400}
+main.wide{max-width:760px}
+.pages{display:flex;flex-direction:column;gap:12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.page{display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;border:1px solid var(--line)}
+@media print{#s-exam .pages{display:none}}
 </style>
 </head>
 <body>
@@ -99,17 +103,14 @@ button:hover{opacity:.85}
 </section>
 
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 var OLYMPS=["Математика","Фізика","Інформатика","Українська мова","Хімія"];
-var TASKS=[
- "Знайдіть усі дійсні розв’язки рівняння x² − 5x + 6 = 0.",
- "Скільки існує тризначних чисел, сума цифр яких дорівнює 5?",
- "У прямокутному трикутнику катети дорівнюють 6 і 8. Знайдіть радіус вписаного кола."
-];
 var st={email:"",fio:"",olymp:""};
 function $(i){return document.getElementById(i)}
 function show(id){
   document.querySelectorAll("section").forEach(function(s){s.classList.toggle("on",s.id===id)});
+  document.querySelector("main").classList.toggle("wide",id==="s-exam");
   var f=document.querySelector("#"+id+" input[type=email],#"+id+" input[type=text]");
   if(f)f.focus({preventScroll:true});
   window.scrollTo(0,0);
@@ -164,18 +165,74 @@ function enter(){
   .then(function(x){return x.json()})
   .then(function(d){
     if(!d.ok)throw new Error("bad");
-    $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;openExam();
+    $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;st.code=c;openExam();
   })
   .catch(function(){$("c-err").textContent="Невірний код або немає зв’язку. Спробуйте ще раз."})
   .finally(function(){btn.disabled=false;btn.textContent="Увійти"});
 }
-function openExam(){
+var PDF_WORKER="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",pdfReady=null;
+function api(body){
+  return fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).then(function(x){return x.json()});
+}
+function initPdf(){
+  if(!pdfReady)pdfReady=fetch(PDF_WORKER).then(function(r){return r.text()}).then(function(t){
+    pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:"text/javascript"}));
+  });
+  return pdfReady;
+}
+function b64ToBytes(b){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+function stamp(ctx,w,h){
+  ctx.save();ctx.globalAlpha=.07;ctx.fillStyle="#000";ctx.font="600 "+Math.round(w/30)+"px sans-serif";
+  ctx.rotate(-Math.PI/6);var t=st.fio+" · "+st.code;
+  for(var y=-h;y<h*1.5;y+=w/5)for(var x=-w;x<w*1.5;x+=w/1.6)ctx.fillText(t,x,y);
+  ctx.restore();
+}
+async function renderPdf(bytes,box){
+  await initPdf();
+  var pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+  var dpr=Math.min(window.devicePixelRatio||1,2),cw=box.clientWidth||700;
+  for(var n=1;n<=pdf.numPages;n++){
+    var page=await pdf.getPage(n),v0=page.getViewport({scale:1}),v=page.getViewport({scale:cw*dpr/v0.width});
+    var cv=document.createElement("canvas");cv.width=Math.floor(v.width);cv.height=Math.floor(v.height);
+    var ctx=cv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,cv.width,cv.height);
+    await page.render({canvasContext:ctx,viewport:v}).promise;
+    stamp(ctx,cv.width,cv.height);
+    var img=new Image();img.className="page";img.alt="Сторінка "+n;img.draggable=false;
+    img.src=cv.toDataURL("image/jpeg",.85);box.appendChild(img);
+  }
+}
+var GH={repo:"CrazyKaktusBro/MAN_2026",dir:"olympiads",branch:"main"};
+var FOLDERS={"Математика":"math","Фізика":"physics","Інформатика":"informatics","Українська мова":"ukrainian","Хімія":"chemistry"};
+async function listTasks(olymp){
+  var f=FOLDERS[olymp];if(!f)throw new Error("folder");
+  var r=await fetch("https://api.github.com/repos/"+GH.repo+"/contents/"+GH.dir+"/"+f+"?ref="+GH.branch);
+  if(!r.ok)throw new Error("list");
+  var a=await r.json();
+  return a.filter(function(x){return x.type==="file"&&/\.pdf$/i.test(x.name)})
+    .sort(function(x,y){return x.name.localeCompare(y.name,"uk",{numeric:true})})
+    .map(function(x){return x.download_url});
+}
+async function openExam(){
   $("ex-title").textContent=st.olymp||"Олімпіада";
   $("ex-who").textContent=st.fio;
-  $("tasks").innerHTML=TASKS.map(function(t,i){
-    return '<div class="task"><span class="meta">Завдання '+(i+1)+' з '+TASKS.length+'</span><h2>'+t+'</h2>'+
-    '<input type="text" aria-label="Відповідь до завдання '+(i+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
+  $("tasks").innerHTML="<p>Завантаження завдань…</p>";
+  $("x-err").textContent="";$("b-send").hidden=true;
   show("s-exam");
+  try{
+    var files=await listTasks(st.olymp);
+    if(!files.length)throw new Error("none");
+    $("tasks").innerHTML=files.map(function(f,k){
+      return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
+      '<input type="text" aria-label="Відповідь до завдання '+(k+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
+    for(var i=0;i<files.length;i++){
+      var box=$("pg"+i),res=await fetch(files[i]);
+      if(!res.ok)throw new Error("pdf");
+      box.innerHTML="";await renderPdf(new Uint8Array(await res.arrayBuffer()),box);
+    }
+    $("b-send").hidden=false;
+  }catch(e){
+    $("tasks").innerHTML='<p class="err" style="min-height:0">Не вдалося завантажити завдання. Оновіть сторінку або зверніться до організатора.</p>';
+  }
 }
 $("b-code").onclick=enter;
 $("code").onkeydown=function(e){if(e.key==="Enter")enter()};
@@ -187,6 +244,7 @@ $("b-send").onclick=function(){
   window.confirmed=false;$("x-err").textContent="";show("s-done");
 };
 $("b-home").onclick=function(){$("email").value="";st={email:"",fio:"",olymp:""};show("s-email")};
+document.addEventListener("contextmenu",function(e){if(e.target.closest&&e.target.closest(".pages"))e.preventDefault()});
 // enter key on email/name
 $("email").onkeydown=function(e){if(e.key==="Enter")$("b-email").click()};
 $("fio").onkeydown=function(e){if(e.key==="Enter")$("b-name").click()};
