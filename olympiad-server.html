@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Олімпіада</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--fg:#000;--mute:#767676;--line:#d4d4d4;--acc:#1b3fd1;--err:#c62828;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--mute:#9a9a9a;--line:#3a3a3a;--acc:#7f9bff;--err:#ff8a80}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--mute:#9a9a9a;--line:#3a3a3a;--acc:#7f9bff;--err:#ff8a80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.5 Manrope,system-ui,sans-serif}
+main{max-width:380px;margin:0 auto;padding:12vh 24px 64px}
+section{display:none;flex-direction:column;gap:28px}
+section.on{display:flex}
+h1{font-weight:300;font-size:2.4rem;line-height:1.1;margin:0;letter-spacing:-.02em}
+h2{font-weight:600;font-size:1.05rem;margin:0}
+p{margin:0;color:var(--mute)}
+input[type=text],input[type=email]{width:100%;border:0;border-bottom:1px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:10px 0;border-radius:0;outline:0}
+input:focus-visible,button:focus-visible,label:focus-within{outline:2px solid var(--acc);outline-offset:4px}
+input::placeholder{color:var(--mute)}
+button{font:600 1rem Manrope,system-ui,sans-serif;background:var(--fg);color:var(--bg);border:1px solid var(--fg);padding:14px 20px;cursor:pointer;width:100%;border-radius:0}
+button.ghost{background:transparent;color:var(--fg)}
+button:hover{opacity:.85}
+.err{color:var(--err);min-height:1.5em;font-size:.9rem}
+.ok{color:var(--acc);font-size:.95rem}
+.opt{display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.opt input{accent-color:var(--acc);width:18px;height:18px;margin:0}
+.task{display:flex;flex-direction:column;gap:12px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.task .meta{color:var(--mute);font-size:.85rem}
+.back{background:none;border:0;color:var(--mute);width:auto;padding:0;text-align:left;font-weight:400}
+</style>
+</head>
+<body>
+<main>
+
+<section id="s-email" class="on">
+  <h1>Вхід</h1>
+  <p id="note" class="ok" hidden>Реєстрацію завершено. Увійдіть знову, щоб продовжити.</p>
+  <label for="email"><p>Електронна пошта</p></label>
+  <input id="email" type="email" placeholder="name@example.com" autocomplete="email">
+  <div id="e-err" class="err"></div>
+  <button id="b-email">Продовжити</button>
+</section>
+
+<section id="s-choice">
+  <h1>Олімпіада</h1>
+  <p id="who"></p>
+  <button id="b-reg">Зареєструватись на олімпіаду</button>
+  <button id="b-login" class="ghost">Увійти на олімпіаду</button>
+  <button class="back" data-go="s-email">Змінити пошту</button>
+</section>
+
+<section id="s-name">
+  <h1>Реєстрація</h1>
+  <label for="fio"><p>Прізвище, ім’я та по батькові</p></label>
+  <input id="fio" type="text" placeholder="Шевченко Тарас Григорович" autocomplete="name">
+  <div id="n-err" class="err"></div>
+  <button id="b-name">Далі</button>
+  <button class="back" data-go="s-choice">Назад</button>
+</section>
+
+<section id="s-pick">
+  <h1>Оберіть олімпіаду</h1>
+  <div id="list"></div>
+  <div id="p-err" class="err"></div>
+  <button id="b-pick">Завершити реєстрацію</button>
+  <button class="back" data-go="s-name">Назад</button>
+</section>
+
+<section id="s-code">
+  <h1>Код доступу</h1>
+  <label for="code"><p>Введіть 8-значний код</p></label>
+  <input id="code" type="text" inputmode="numeric" maxlength="8" placeholder="00000000" autocomplete="one-time-code">
+  <div id="c-err" class="err"></div>
+  <button id="b-code">Увійти</button>
+  <button class="back" data-go="s-choice">Назад</button>
+</section>
+
+<section id="s-exam">
+  <h1 id="ex-title">Математика</h1>
+  <p id="ex-who"></p>
+  <div id="tasks"></div>
+  <div id="x-err" class="err"></div>
+  <button id="b-send">Надіслати відповіді</button>
+</section>
+
+<section id="s-done">
+  <h1>Відповіді надіслано</h1>
+  <p>Дякуємо за участь. Результати буде опубліковано після перевірки.</p>
+  <button id="b-home">На початок</button>
+</section>
+
+</main>
+<script>
+var OLYMPS=["Математика","Фізика","Інформатика","Українська мова","Хімія"];
+var TASKS=[
+ "Знайдіть усі дійсні розв’язки рівняння x² − 5x + 6 = 0.",
+ "Скільки існує тризначних чисел, сума цифр яких дорівнює 5?",
+ "У прямокутному трикутнику катети дорівнюють 6 і 8. Знайдіть радіус вписаного кола."
+];
+var CODE="12345678", st={email:"",fio:"",olymp:""};
+function $(i){return document.getElementById(i)}
+function show(id){
+  document.querySelectorAll("section").forEach(function(s){s.classList.toggle("on",s.id===id)});
+  var f=document.querySelector("#"+id+" input[type=email],#"+id+" input[type=text]");
+  if(f)f.focus({preventScroll:true});
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){show(b.dataset.go)}});
+
+// 1. email
+$("b-email").onclick=function(){
+  var v=$("email").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){$("e-err").textContent="Введіть коректну електронну пошту.";return}
+  $("e-err").textContent="";st.email=v;
+  $("who").textContent=v;$("note").hidden=true;show("s-choice");
+};
+// 2. choice
+$("b-reg").onclick=function(){show("s-name")};
+$("b-login").onclick=function(){$("code").value="";$("c-err").textContent="";show("s-code")};
+// reg: name
+$("b-name").onclick=function(){
+  var v=$("fio").value.trim().replace(/\s+/g," ");
+  if(v.split(" ").length<2){$("n-err").textContent="Вкажіть щонайменше прізвище та ім’я.";return}
+  $("n-err").textContent="";st.fio=v;show("s-pick");
+};
+// reg: pick
+var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgmir1SIIFI-MRlq5heSY5Dvc6YJ3Ec6tVjgnmkktpM3rYg/exec";
+$("list").innerHTML=OLYMPS.map(function(o,i){
+  return '<label class="opt"><input type="radio" name="ol" value="'+o+'"><span>'+o+'</span></label>'}).join("");
+$("b-pick").onclick=function(){
+  var r=document.querySelector("input[name=ol]:checked");
+  if(!r){$("p-err").textContent="Оберіть одну олімпіаду.";return}
+  st.olymp=r.value;$("p-err").textContent="";
+  var btn=$("b-pick");btn.disabled=true;btn.textContent="Збереження…";
+  fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({email:st.email,fio:st.fio,olymp:st.olymp})})
+  .then(function(x){return x.json()})
+  .then(function(d){
+    if(!d.ok)throw new Error(d.error||"error");
+    $("email").value="";$("fio").value="";r.checked=false;
+    $("note").hidden=false;show("s-email");
+  })
+  .catch(function(){$("p-err").textContent="Не вдалося зберегти. Спробуйте ще раз."})
+  .finally(function(){btn.disabled=false;btn.textContent="Завершити реєстрацію"});
+};
+// login: code
+function enter(){
+  if($("code").value.trim()!==CODE){$("c-err").textContent="Невірний код. Спробуйте ще раз.";return}
+  $("c-err").textContent="";
+  $("ex-title").textContent=st.olymp||"Олімпіада";
+  $("ex-who").textContent=st.email;
+  $("tasks").innerHTML=TASKS.map(function(t,i){
+    return '<div class="task"><span class="meta">Завдання '+(i+1)+' з '+TASKS.length+'</span><h2>'+t+'</h2>'+
+    '<input type="text" aria-label="Відповідь до завдання '+(i+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
+  show("s-exam");
+}
+$("b-code").onclick=enter;
+$("code").onkeydown=function(e){if(e.key==="Enter")enter()};
+// exam
+$("b-send").onclick=function(){
+  var a=document.querySelectorAll("#tasks input"),empty=0;
+  a.forEach(function(x){if(!x.value.trim())empty++});
+  if(empty&&!window.confirmed){$("x-err").textContent="Без відповіді: "+empty+". Натисніть ще раз, щоб надіслати.";window.confirmed=true;return}
+  window.confirmed=false;$("x-err").textContent="";show("s-done");
+};
+$("b-home").onclick=function(){$("email").value="";st={email:"",fio:"",olymp:""};show("s-email")};
+// enter key on email/name
+$("email").onkeydown=function(e){if(e.key==="Enter")$("b-email").click()};
+$("fio").onkeydown=function(e){if(e.key==="Enter")$("b-name").click()};
+</script>
+</body>
+</html>
