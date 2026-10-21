@@ -91,6 +91,7 @@ main.wide{max-width:760px}
 <section id="s-exam">
   <h1 id="ex-title">Математика</h1>
   <p id="ex-who"></p>
+  <p id="timer"></p>
   <div id="tasks"></div>
   <div id="x-err" class="err"></div>
   <button id="b-send">Надіслати відповіді</button>
@@ -131,12 +132,24 @@ $("b-login").onclick=function(){$("code").value="";$("c-err").textContent="";sho
 $("b-name").onclick=function(){
   var v=$("fio").value.trim().replace(/\s+/g," ");
   if(v.split(" ").length<2){$("n-err").textContent="Вкажіть щонайменше прізвище та ім’я.";return}
-  $("n-err").textContent="";st.fio=v;show("s-pick");
+  $("n-err").textContent="";st.fio=v;show("s-pick");loadPick();
 };
 // reg: pick
 var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgmir1SIIFI-MRlq5heSY5Dvc6YJ3Ec6tVjgnmkktpM3rYg/exec";
-$("list").innerHTML=OLYMPS.map(function(o,i){
-  return '<label class="opt"><input type="radio" name="ol" value="'+o+'"><span>'+o+'</span></label>'}).join("");
+function fmt(ms){return new Date(ms).toLocaleString("uk-UA",{timeZone:"Europe/Kyiv",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}
+function loadPick(){
+  $("list").innerHTML="<p>Завантаження…</p>";$("b-pick").disabled=true;$("p-err").textContent="";
+  api({action:"status"}).then(function(d){
+    if(!d.ok)throw 0;
+    var any=false;
+    $("list").innerHTML=OLYMPS.map(function(o){
+      var s=(d.st[o]&&d.st[o].reg)||{s:"closed"},open=s.s==="open";any=any||open;
+      var note=open?(s.until?"відкрито до "+fmt(s.until):""):s.s==="soon"?"відкриється "+fmt(s.at):"реєстрацію закрито";
+      return '<label class="opt"'+(open?'':' style="opacity:.5"')+'><input type="radio" name="ol" value="'+o+'"'+(open?'':' disabled')+'><span>'+o+(note?'<br><small style="color:var(--mute)">'+note+'</small>':'')+'</span></label>'}).join("");
+    $("b-pick").disabled=!any;
+    if(!any)$("p-err").textContent="Реєстрація зараз закрита.";
+  }).catch(function(){$("list").innerHTML="";$("p-err").textContent="Не вдалося завантажити список. Оновіть сторінку."});
+}
 $("b-pick").onclick=function(){
   var r=document.querySelector("input[name=ol]:checked");
   if(!r){$("p-err").textContent="Оберіть одну олімпіаду.";return}
@@ -152,7 +165,7 @@ $("b-pick").onclick=function(){
     $("mailed").textContent=d.mailed?"Копію також надіслано на вашу пошту.":"";
     $("note").hidden=false;show("s-email");
   })
-  .catch(function(e){$("p-err").textContent=(e&&e.message==="exists")?"Цю пошту вже зареєстровано.":"Не вдалося зберегти. Спробуйте ще раз."})
+  .catch(function(e){var m=e&&e.message;$("p-err").textContent=m==="exists"?"Цю пошту вже зареєстровано.":m==="closed"?"Реєстрацію на цю олімпіаду закрито.":"Не вдалося зберегти. Спробуйте ще раз."})
   .finally(function(){btn.disabled=false;btn.textContent="Завершити реєстрацію"});
 };
 // login: code
@@ -164,10 +177,13 @@ function enter(){
     body:JSON.stringify({action:"login",code:c})})
   .then(function(x){return x.json()})
   .then(function(d){
-    if(!d.ok)throw new Error("bad");
-    $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;st.code=c;openExam();
+    if(!d.ok)throw new Error(d.error==="closed"?(d.state==="soon"?"soon:"+d.at:"closed"):"bad");
+    $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;st.code=c;
+    st.until=d.until;st.off=d.now-Date.now();st.ans=d.answers||[];st.dirty=false;
+    if(d.submitted){show("s-done");return}
+    openExam();
   })
-  .catch(function(){$("c-err").textContent="Невірний код або немає зв’язку. Спробуйте ще раз."})
+  .catch(function(e){var m=(e&&e.message)||"";$("c-err").textContent=m==="closed"?"Вхід на цю олімпіаду зараз закритий.":m.indexOf("soon:")===0?"Вхід відкриється "+fmt(+m.slice(5))+".":"Невірний код або немає зв’язку. Спробуйте ще раз."})
   .finally(function(){btn.disabled=false;btn.textContent="Увійти"});
 }
 var PDF_WORKER="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",pdfReady=null;
@@ -201,6 +217,36 @@ async function renderPdf(bytes,box){
     img.src=cv.toDataURL("image/jpeg",.85);box.appendChild(img);
   }
 }
+var tmr=null,sv=null;
+function collect(){return Array.prototype.map.call(document.querySelectorAll("#tasks input"),function(x){return x.value})}
+function saveNow(){
+  if(!st.code||st.locked||st.ending)return;
+  api({action:"save",code:st.code,answers:collect()}).then(function(d){
+    if(d.ok){st.dirty=false;if(d.ended)endExam()}else if(d.error==="closed")endExam();
+  }).catch(function(){});
+}
+// Час вийшов: блокуємо поля й востаннє зберігаємо те, що введено
+function endExam(){
+  if(st.ending)return;st.ending=true;
+  document.querySelectorAll("#tasks input").forEach(function(x){x.disabled=true});
+  $("b-send").hidden=true;
+  api({action:"save",code:st.code,answers:collect()}).catch(function(){return null}).then(function(d){
+    st.locked=true;clearInterval(tmr);clearInterval(sv);$("timer").textContent="";
+    $("x-err").textContent=(d&&d.ok)?"Олімпіаду завершено. Усе, що ви встигли ввести, збережено.":"Олімпіаду завершено. Збережено відповіді, внесені до останнього автозбереження.";
+  });
+}
+function startExam(){
+  st.locked=false;st.ending=false;clearInterval(tmr);clearInterval(sv);
+  sv=setInterval(function(){if(st.dirty)saveNow()},20000);
+  function tick(){
+    if(!st.until){$("timer").textContent="";return}
+    var left=st.until-(Date.now()+st.off);
+    if(left<=0){endExam();return}
+    var s=Math.floor(left/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60);
+    $("timer").textContent="Залишилось: "+(h?h+" год ":"")+m+" хв "+(s%60)+" с";
+  }
+  tick();tmr=setInterval(tick,1000);
+}
 async function openExam(){
   $("ex-title").textContent=st.olymp||"Олімпіада";
   $("ex-who").textContent=st.fio;
@@ -213,6 +259,10 @@ async function openExam(){
     $("tasks").innerHTML=r.files.map(function(f,k){
       return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+r.files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
       '<input type="text" aria-label="Відповідь до завдання '+(k+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
+    document.querySelectorAll("#tasks input").forEach(function(x,i){
+      x.value=(st.ans||[])[i]||"";x.oninput=function(){st.dirty=true};x.onblur=function(){if(st.dirty)saveNow()};
+    });
+    startExam();
     for(var i=0;i<r.files.length;i++){
       var box=$("pg"+i),p=await api({action:"pdf",code:st.code,id:r.files[i].id});
       if(!p.ok)throw new Error("pdf");
@@ -230,7 +280,13 @@ $("b-send").onclick=function(){
   var a=document.querySelectorAll("#tasks input"),empty=0;
   a.forEach(function(x){if(!x.value.trim())empty++});
   if(empty&&!window.confirmed){$("x-err").textContent="Без відповіді: "+empty+". Натисніть ще раз, щоб надіслати.";window.confirmed=true;return}
-  window.confirmed=false;$("x-err").textContent="";show("s-done");
+  window.confirmed=false;$("x-err").textContent="";
+  var b=$("b-send");b.disabled=true;
+  api({action:"save",code:st.code,answers:collect(),final:true}).then(function(d){
+    if(!d.ok){if(d.error==="closed")endExam();throw 0}
+    st.locked=true;clearInterval(tmr);clearInterval(sv);show("s-done");
+  }).catch(function(){if(!st.ending)$("x-err").textContent="Не вдалося надіслати. Спробуйте ще раз."})
+  .finally(function(){b.disabled=false});
 };
 $("b-home").onclick=function(){$("email").value="";st={email:"",fio:"",olymp:""};show("s-email")};
 document.addEventListener("contextmenu",function(e){if(e.target.closest&&e.target.closest(".pages"))e.preventDefault()});
