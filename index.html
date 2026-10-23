@@ -36,6 +36,9 @@ main.wide{max-width:760px}
 .pages{display:flex;flex-direction:column;gap:12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .page{display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;border:1px solid var(--line)}
 @media print{#s-exam .pages{display:none}}
+select{width:100%;border:0;border-bottom:1px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:10px 0;border-radius:0;outline:0}
+select:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
+select option{background:var(--bg);color:var(--fg)}
 </style>
 </head>
 <body>
@@ -71,12 +74,33 @@ main.wide{max-width:760px}
   <button class="back" data-go="s-choice">Назад</button>
 </section>
 
+<section id="s-region">
+  <h1>Школа</h1>
+  <label for="reg"><p>Область або місто</p></label>
+  <select id="reg"><option value="">Оберіть область</option><option>Вінницька область</option><option>Волинська область</option><option>Дніпропетровська область</option><option>Донецька область</option><option>Житомирська область</option><option>Закарпатська область</option><option>Запорізька область</option><option>Івано-Франківська область</option><option>Київська область</option><option>Кіровоградська область</option><option>Луганська область</option><option>Львівська область</option><option>Миколаївська область</option><option>Одеська область</option><option>Полтавська область</option><option>Рівненська область</option><option>Сумська область</option><option>Тернопільська область</option><option>Харківська область</option><option>Херсонська область</option><option>Хмельницька область</option><option>Черкаська область</option><option>Чернівецька область</option><option>Чернігівська область</option><option>м. Київ</option><option>АР Крим</option><option>м. Севастополь</option></select>
+  <label for="school-sel" id="ls" hidden><p>Школа</p></label>
+  <select id="school-sel" hidden></select>
+  <label for="school" id="lt"><p>Школа (назва або номер)</p></label>
+  <input id="school" type="text" placeholder="Ліцей № 27" autocomplete="organization">
+  <div id="r-err" class="err"></div>
+  <button id="b-region">Далі</button>
+  <button class="back" data-go="s-name">Назад</button>
+</section>
+
+<section id="s-class">
+  <h1>Клас</h1>
+  <div id="classes"></div>
+  <div id="k-err" class="err"></div>
+  <button id="b-class">Далі</button>
+  <button class="back" data-go="s-region">Назад</button>
+</section>
+
 <section id="s-pick">
   <h1>Оберіть олімпіаду</h1>
   <div id="list"></div>
   <div id="p-err" class="err"></div>
   <button id="b-pick">Завершити реєстрацію</button>
-  <button class="back" data-go="s-name">Назад</button>
+  <button class="back" data-go="s-class">Назад</button>
 </section>
 
 <section id="s-code">
@@ -132,7 +156,55 @@ $("b-login").onclick=function(){$("code").value="";$("c-err").textContent="";sho
 $("b-name").onclick=function(){
   var v=$("fio").value.trim().replace(/\s+/g," ");
   if(v.split(" ").length<2){$("n-err").textContent="Вкажіть щонайменше прізвище та ім’я.";return}
-  $("n-err").textContent="";st.fio=v;show("s-pick");loadPick();
+  $("n-err").textContent="";st.fio=v;show("s-region");loadSchools();
+};
+// reg: region + school
+var SCH=null;
+function opt(t,v){var o=document.createElement("option");o.textContent=t;o.value=v;return o}
+function loadSchools(){
+  if(SCH!==null)return;
+  api({action:"schools"}).then(function(d){
+    if(!d.ok||!d.regions||!d.regions.length)return;
+    SCH=d.regions;var sel=$("reg");sel.innerHTML="";
+    sel.appendChild(opt("Оберіть область або місто",""));
+    SCH.forEach(function(r,i){sel.appendChild(opt(r.n,String(i)))});
+    syncSchool();
+  }).catch(function(){});
+}
+function syncSchool(){
+  var list=!!SCH,picked=$("reg").value!=="",other=$("school-sel").value==="__other";
+  $("ls").hidden=$("school-sel").hidden=!(list&&picked);
+  $("lt").hidden=$("school").hidden=!(!list||(picked&&other));
+}
+$("reg").onchange=function(){
+  if(SCH&&this.value!==""){
+    var ss=$("school-sel");ss.innerHTML="";ss.appendChild(opt("Оберіть школу",""));
+    SCH[+this.value].s.forEach(function(x){ss.appendChild(opt(x,x))});
+    ss.appendChild(opt("Моєї школи немає в списку","__other"));
+  }
+  syncSchool();
+};
+$("school-sel").onchange=function(){syncSchool();if(this.value==="__other")$("school").focus()};
+$("b-region").onclick=function(){
+  var rv=$("reg").value;
+  if(rv===""){$("r-err").textContent="Оберіть область або місто.";return}
+  var rname=SCH?SCH[+rv].n:rv,sc;
+  if(SCH){
+    var sv=$("school-sel").value;
+    if(sv===""){$("r-err").textContent="Оберіть школу.";return}
+    sc=sv==="__other"?$("school").value:sv;
+  }else sc=$("school").value;
+  sc=sc.trim().replace(/\s+/g," ");
+  if(sc.length<2){$("r-err").textContent="Вкажіть школу.";return}
+  $("r-err").textContent="";st.region=rname;st.school=sc;show("s-class");
+};
+// reg: class
+$("classes").innerHTML=[5,6,7,8,9,10,11].map(function(k){
+  return '<label class="opt"><input type="radio" name="kl" value="'+k+'"><span>'+k+' клас</span></label>'}).join("");
+$("b-class").onclick=function(){
+  var r=document.querySelector("input[name=kl]:checked");
+  if(!r){$("k-err").textContent="Оберіть клас.";return}
+  $("k-err").textContent="";st.klass=r.value;show("s-pick");loadPick();
 };
 // reg: pick
 var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgmir1SIIFI-MRlq5heSY5Dvc6YJ3Ec6tVjgnmkktpM3rYg/exec";
@@ -156,11 +228,12 @@ $("b-pick").onclick=function(){
   st.olymp=r.value;$("p-err").textContent="";
   var btn=$("b-pick");btn.disabled=true;btn.textContent="Збереження…";
   fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({email:st.email,fio:st.fio,olymp:st.olymp})})
+    body:JSON.stringify({email:st.email,fio:st.fio,olymp:st.olymp,region:st.region,school:st.school,klass:st.klass})})
   .then(function(x){return x.json()})
   .then(function(d){
     if(!d.ok)throw new Error(d.error||"error");
-    $("email").value="";$("fio").value="";r.checked=false;
+    $("email").value="";$("fio").value="";$("reg").value="";$("school").value="";$("school-sel").innerHTML="";syncSchool();r.checked=false;
+    var kr=document.querySelector("input[name=kl]:checked");if(kr)kr.checked=false;
     $("mycode").textContent=d.code;
     $("mailed").textContent=d.mailed?"Копію також надіслано на вашу пошту.":"";
     $("note").hidden=false;show("s-email");
@@ -290,6 +363,7 @@ $("b-send").onclick=function(){
 };
 $("b-home").onclick=function(){$("email").value="";st={email:"",fio:"",olymp:""};show("s-email")};
 document.addEventListener("contextmenu",function(e){if(e.target.closest&&e.target.closest(".pages"))e.preventDefault()});
+syncSchool();loadSchools();
 // enter key on email/name
 $("email").onkeydown=function(e){if(e.key==="Enter")$("b-email").click()};
 $("fio").onkeydown=function(e){if(e.key==="Enter")$("b-name").click()};
