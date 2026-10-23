@@ -130,7 +130,6 @@ select option{background:var(--bg);color:var(--fg)}
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-var OLYMPS=["Математика","Фізика","Інформатика","Українська мова","Хімія"];
 var st={email:"",fio:"",olymp:""};
 function $(i){return document.getElementById(i)}
 function show(id){
@@ -212,15 +211,15 @@ function fmt(ms){return new Date(ms).toLocaleString("uk-UA",{timeZone:"Europe/Ky
 function loadPick(){
   $("list").innerHTML="<p>Завантаження…</p>";$("b-pick").disabled=true;$("p-err").textContent="";
   api({action:"status"}).then(function(d){
-    if(!d.ok)throw 0;
+    if(!d.ok)throw new Error(d.error||"помилка сервера");
     var any=false;
-    $("list").innerHTML=OLYMPS.map(function(o){
+    $("list").innerHTML=Object.keys(d.st).map(function(o){
       var s=(d.st[o]&&d.st[o].reg)||{s:"closed"},open=s.s==="open";any=any||open;
       var note=open?(s.until?"відкрито до "+fmt(s.until):""):s.s==="soon"?"відкриється "+fmt(s.at):"реєстрацію закрито";
       return '<label class="opt"'+(open?'':' style="opacity:.5"')+'><input type="radio" name="ol" value="'+o+'"'+(open?'':' disabled')+'><span>'+o+(note?'<br><small style="color:var(--mute)">'+note+'</small>':'')+'</span></label>'}).join("");
     $("b-pick").disabled=!any;
     if(!any)$("p-err").textContent="Реєстрація зараз закрита.";
-  }).catch(function(){$("list").innerHTML="";$("p-err").textContent="Не вдалося завантажити список. Оновіть сторінку."});
+  }).catch(function(e){var m=(e&&e.message)||"";if(e instanceof SyntaxError||m==="Failed to fetch")m="сервер не відповідає: не оновлено або не авторизовано";$("list").innerHTML="";$("p-err").textContent="Не вдалося завантажити список ("+m+"). Оновіть сторінку."});
 }
 $("b-pick").onclick=function(){
   var r=document.querySelector("input[name=ol]:checked");
@@ -328,7 +327,7 @@ async function openExam(){
   show("s-exam");
   try{
     var r=await api({action:"files",code:st.code});
-    if(!r.ok||!r.files.length)throw new Error("none");
+    if(!r.ok||!r.files.length)throw new Error(r.error==="no class"||(r.ok&&!r.files.length)?"noclass":"none");
     $("tasks").innerHTML=r.files.map(function(f,k){
       return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+r.files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
       '<input type="text" aria-label="Відповідь до завдання '+(k+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
@@ -343,7 +342,7 @@ async function openExam(){
     }
     $("b-send").hidden=false;
   }catch(e){
-    $("tasks").innerHTML='<p class="err" style="min-height:0">Не вдалося завантажити завдання. Оновіть сторінку або зверніться до організатора.</p>';
+    $("tasks").innerHTML='<p class="err" style="min-height:0">'+(e&&e.message==="noclass"?"Для вашого класу завдань поки немає. Зверніться до організатора.":"Не вдалося завантажити завдання. Оновіть сторінку або зверніться до організатора.")+'</p>';
   }
 }
 $("b-code").onclick=enter;
