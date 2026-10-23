@@ -39,6 +39,11 @@ main.wide{max-width:760px}
 select{width:100%;border:0;border-bottom:1px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:10px 0;border-radius:0;outline:0}
 select:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
 select option{background:var(--bg);color:var(--fg)}
+.upbtn{display:inline-block;align-self:flex-start;position:relative;border:1px solid var(--fg);padding:12px 18px;cursor:pointer;font-weight:600}
+.upbtn input{position:absolute;opacity:0;width:1px;height:1px}
+.fi{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.9rem;word-break:break-all}
+.fi.ph{color:var(--mute)}
+.fi button{flex:none}
 </style>
 </head>
 <body>
@@ -251,7 +256,7 @@ function enter(){
   .then(function(d){
     if(!d.ok)throw new Error(d.error==="closed"?(d.state==="soon"?"soon:"+d.at:"closed"):"bad");
     $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;st.code=c;
-    st.until=d.until;st.off=d.now-Date.now();st.ans=d.answers||[];st.dirty=false;
+    st.until=d.until;st.off=d.now-Date.now();st.files=d.files||[];
     if(d.submitted){show("s-done");return}
     openExam();
   })
@@ -289,27 +294,45 @@ async function renderPdf(bytes,box){
     img.src=cv.toDataURL("image/jpeg",.85);box.appendChild(img);
   }
 }
-var tmr=null,sv=null;
-function collect(){return Array.prototype.map.call(document.querySelectorAll("#tasks input"),function(x){return x.value})}
-function saveNow(){
-  if(!st.code||st.locked||st.ending)return;
-  api({action:"save",code:st.code,answers:collect()}).then(function(d){
-    if(d.ok){st.dirty=false;if(d.ended)endExam()}else if(d.error==="closed")endExam();
-  }).catch(function(){});
+var tmr=null;
+var OKEXT=["pdf","jpg","jpeg","png","webp","heic","doc","docx","txt"];
+function fileRow(list,f){
+  var row=document.createElement("div");row.className="fi";
+  var n=document.createElement("span");n.textContent=f.name;row.appendChild(n);
+  if(!st.locked&&!st.ending){
+    var x=document.createElement("button");x.className="back";x.textContent="Видалити";x.setAttribute("aria-label","Видалити "+f.name);
+    x.onclick=function(){x.disabled=true;api({action:"delfile",code:st.code,id:f.id}).then(function(d){if(!d.ok)throw 0;row.remove()}).catch(function(){x.disabled=false;$("x-err").textContent="Не вдалося видалити файл."})};
+    row.appendChild(x);
+  }
+  list.appendChild(row);
 }
-// Час вийшов: блокуємо поля й востаннє зберігаємо те, що введено
-function endExam(){
-  if(st.ending)return;st.ending=true;
-  document.querySelectorAll("#tasks input").forEach(function(x){x.disabled=true});
-  $("b-send").hidden=true;
-  api({action:"save",code:st.code,answers:collect()}).catch(function(){return null}).then(function(d){
-    st.locked=true;clearInterval(tmr);clearInterval(sv);$("timer").textContent="";
-    $("x-err").textContent=(d&&d.ok)?"Олімпіаду завершено. Усе, що ви встигли ввести, збережено.":"Олімпіаду завершено. Збережено відповіді, внесені до останнього автозбереження.";
+function uploadFiles(k,files,list){
+  Array.prototype.forEach.call(files,function(file){
+    var ext=(file.name.split(".").pop()||"").toLowerCase();
+    if(OKEXT.indexOf(ext)<0){$("x-err").textContent="Тип файлу не підтримується ("+file.name+"). Дозволено: "+OKEXT.join(", ")+".";return}
+    if(file.size>10*1024*1024){$("x-err").textContent="Файл завеликий (макс. 10 МБ): "+file.name;return}
+    var ph=document.createElement("div");ph.className="fi ph";ph.textContent="Завантаження: "+file.name+"…";list.appendChild(ph);
+    var fr=new FileReader();
+    fr.onload=function(){
+      api({action:"upload",code:st.code,task:k,name:file.name,mime:file.type,b64:String(fr.result).split(",")[1]}).then(function(d){
+        ph.remove();
+        if(!d.ok){$("x-err").textContent=d.error==="closed"?"Час вийшов, файл не прийнято.":d.error==="submitted"?"Відповіді вже надіслано.":"Не вдалося завантажити "+file.name+". Спробуйте ще раз.";return}
+        $("x-err").textContent="";fileRow(list,{id:d.id,name:d.name});
+      }).catch(function(){ph.remove();$("x-err").textContent="Не вдалося завантажити "+file.name+". Перевірте з’єднання."});
+    };
+    fr.readAsDataURL(file);
   });
 }
+// Час вийшов: блокуємо додавання файлів; усе вже завантажене лишається збереженим
+function endExam(){
+  if(st.ending)return;st.ending=true;st.locked=true;clearInterval(tmr);$("timer").textContent="";
+  document.querySelectorAll("#tasks .upbtn").forEach(function(x){x.style.display="none"});
+  document.querySelectorAll("#tasks .fi button").forEach(function(x){x.remove()});
+  $("b-send").hidden=true;
+  $("x-err").textContent="Олімпіаду завершено. Усі завантажені файли збережено.";
+}
 function startExam(){
-  st.locked=false;st.ending=false;clearInterval(tmr);clearInterval(sv);
-  sv=setInterval(function(){if(st.dirty)saveNow()},20000);
+  st.locked=false;st.ending=false;clearInterval(tmr);
   function tick(){
     if(!st.until){$("timer").textContent="";return}
     var left=st.until-(Date.now()+st.off);
@@ -330,11 +353,12 @@ async function openExam(){
     if(!r.ok||!r.files.length)throw new Error(r.error==="no class"||(r.ok&&!r.files.length)?"noclass":"none");
     $("tasks").innerHTML=r.files.map(function(f,k){
       return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+r.files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
-      '<input type="text" aria-label="Відповідь до завдання '+(k+1)+'" placeholder="Ваша відповідь"></div>'}).join("");
-    document.querySelectorAll("#tasks input").forEach(function(x,i){
-      x.value=(st.ans||[])[i]||"";x.oninput=function(){st.dirty=true};x.onblur=function(){if(st.dirty)saveNow()};
-    });
+      '<label class="upbtn">Додати файл відповіді<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.txt" data-k="'+(k+1)+'"></label><div class="flist" id="fl'+(k+1)+'"></div></div>'}).join("");
     startExam();
+    (st.files||[]).forEach(function(f){var l=$("fl"+f.task);if(l)fileRow(l,f)});
+    document.querySelectorAll("#tasks input[type=file]").forEach(function(x){
+      x.onchange=function(){uploadFiles(+x.dataset.k,x.files,$("fl"+x.dataset.k));x.value=""};
+    });
     for(var i=0;i<r.files.length;i++){
       var box=$("pg"+i),p=await api({action:"pdf",code:st.code,id:r.files[i].id});
       if(!p.ok)throw new Error("pdf");
@@ -349,14 +373,14 @@ $("b-code").onclick=enter;
 $("code").onkeydown=function(e){if(e.key==="Enter")enter()};
 // exam
 $("b-send").onclick=function(){
-  var a=document.querySelectorAll("#tasks input"),empty=0;
-  a.forEach(function(x){if(!x.value.trim())empty++});
-  if(empty&&!window.confirmed){$("x-err").textContent="Без відповіді: "+empty+". Натисніть ще раз, щоб надіслати.";window.confirmed=true;return}
+  if(document.querySelector("#tasks .fi.ph")){$("x-err").textContent="Зачекайте: файли ще завантажуються.";return}
+  var empty=0;document.querySelectorAll("#tasks .flist").forEach(function(l){if(!l.querySelector(".fi"))empty++});
+  if(empty&&!window.confirmed){$("x-err").textContent="Завдань без файлів: "+empty+". Натисніть ще раз, щоб надіслати.";window.confirmed=true;return}
   window.confirmed=false;$("x-err").textContent="";
   var b=$("b-send");b.disabled=true;
-  api({action:"save",code:st.code,answers:collect(),final:true}).then(function(d){
-    if(!d.ok){if(d.error==="closed")endExam();throw 0}
-    st.locked=true;clearInterval(tmr);clearInterval(sv);show("s-done");
+  api({action:"finish",code:st.code}).then(function(d){
+    if(!d.ok){if(d.error==="closed")endExam();else if(d.error==="submitted"){show("s-done");return}throw 0}
+    st.locked=true;clearInterval(tmr);show("s-done");
   }).catch(function(){if(!st.ending)$("x-err").textContent="Не вдалося надіслати. Спробуйте ще раз."})
   .finally(function(){b.disabled=false});
 };
