@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Перевірка робіт</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--bg:#fff;--fg:#000;--mute:#767676;--line:#d4d4d4;--acc:#1b3fd1;--err:#c62828;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--fg:#fff;--mute:#9a9a9a;--line:#3a3a3a;--acc:#7f9bff;--err:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.5 Manrope,system-ui,sans-serif}
+main{max-width:380px;margin:0 auto;padding:12vh 24px 64px}
+main.wide{max-width:760px;padding-top:6vh}
+section{display:none;flex-direction:column;gap:28px}
+section.on{display:flex}
+h1{font-weight:300;font-size:2.4rem;line-height:1.1;margin:0;letter-spacing:-.02em}
+h2{font-weight:600;font-size:1.05rem;margin:0}
+p{margin:0;color:var(--mute)}
+input[type=text],input[type=password]{width:100%;border:0;border-bottom:1px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:10px 0;border-radius:0;outline:0}
+input:focus-visible,button:focus-visible,label:focus-within{outline:2px solid var(--acc);outline-offset:4px}
+button{font:600 1rem Manrope,system-ui,sans-serif;background:var(--fg);color:var(--bg);border:1px solid var(--fg);padding:14px 20px;cursor:pointer;width:100%;border-radius:0}
+button:disabled{opacity:.5;cursor:default}
+.back{background:none;border:0;color:var(--mute);width:auto;padding:0;text-align:left;font-weight:400}
+.err{color:var(--err);min-height:1.5em;font-size:.9rem}
+.opt{display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.opt input{accent-color:var(--acc);width:18px;height:18px;margin:0}
+.task{display:flex;flex-direction:column;gap:14px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.files{display:flex;flex-direction:column;gap:12px}
+.files img,.files canvas{width:100%;height:auto;display:block;border:1px solid var(--line);background:#fff}
+.files pre{white-space:pre-wrap;margin:0;font:inherit;border:1px solid var(--line);padding:12px}
+.score{max-width:160px}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<main id="m">
+
+<section id="s1" class="on">
+  <h1>Перевірка</h1>
+  <label for="nm"><p>Ім’я перевіряючого</p></label>
+  <input id="nm" type="text" placeholder="Прізвище та ім’я" autocomplete="name">
+  <label for="ky"><p>Код доступу журі</p></label>
+  <input id="ky" type="password" autocomplete="current-password">
+  <div id="e1" class="err"></div>
+  <button id="b1">Далі</button>
+</section>
+
+<section id="s2">
+  <h1>Олімпіада</h1>
+  <div id="list"></div>
+  <div id="e2" class="err"></div>
+  <button id="b2">Почати перевірку</button>
+  <button class="back" id="back1">Назад</button>
+</section>
+
+<section id="s3">
+  <p id="info"></p>
+  <div id="work"></div>
+  <div id="e3" class="err"></div>
+  <button id="b3">Зберегти й перейти до наступної</button>
+  <button class="back" id="back2">Завершити перевірку</button>
+</section>
+
+<section id="s4">
+  <h1>Усе перевірено</h1>
+  <p>Неперевірених робіт у цій олімпіаді більше немає.</p>
+  <button id="b4">До вибору олімпіади</button>
+</section>
+
+</main>
+<script>
+var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgmir1SIIFI-MRlq5heSY5Dvc6YJ3Ec6tVjgnmkktpM3rYg/exec";
+var st={};
+function $(i){return document.getElementById(i)}
+function api(b){return fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(b)}).then(function(x){return x.json()})}
+function auth(){return {name:st.name,key:st.key}}
+function show(id){
+  document.querySelectorAll("section").forEach(function(s){s.classList.toggle("on",s.id===id)});
+  $("m").classList.toggle("wide",id==="s3");window.scrollTo(0,0);
+}
+function b64ToBytes(b){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+var PDF_WORKER="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",pdfReady=null;
+function initPdf(){
+  if(!pdfReady)pdfReady=fetch(PDF_WORKER).then(function(r){return r.text()}).then(function(t){
+    pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:"text/javascript"}));
+  });
+  return pdfReady;
+}
+function authErr(d){return d.error==="bad key"?"Невірний код доступу журі.":d.error==="no key"?"На сервері не задано GRADER_KEY (Project Settings → Script properties).":d.error==="no name"?"Вкажіть ім’я перевіряючого.":"Помилка сервера: "+(d.error||"невідома")}
+
+// 1. ім'я + ключ
+$("b1").onclick=function(){
+  var n=$("nm").value.trim().replace(/\s+/g," "),k=$("ky").value;
+  if(n.length<2){$("e1").textContent="Вкажіть ім’я перевіряючого.";return}
+  if(!k){$("e1").textContent="Введіть код доступу журі.";return}
+  st.name=n;st.key=k;$("e1").textContent="";$("b1").disabled=true;
+  api(Object.assign({action:"g_olymps"},auth())).then(function(d){
+    if(!d.ok){$("e1").textContent=authErr(d);return}
+    $("list").innerHTML="";
+    d.list.forEach(function(o){
+      var l=document.createElement("label");l.className="opt";
+      var r=document.createElement("input");r.type="radio";r.name="ol";r.value=o;
+      var sp=document.createElement("span");sp.textContent=o;
+      l.appendChild(r);l.appendChild(sp);$("list").appendChild(l);
+    });
+    show("s2");
+  }).catch(function(){$("e1").textContent="Немає зв’язку із сервером."}).finally(function(){$("b1").disabled=false});
+};
+$("ky").onkeydown=function(e){if(e.key==="Enter")$("b1").click()};
+// 2. олімпіада
+$("back1").onclick=function(){show("s1")};
+$("b2").onclick=function(){
+  var r=document.querySelector("input[name=ol]:checked");
+  if(!r){$("e2").textContent="Оберіть олімпіаду.";return}
+  $("e2").textContent="";st.olymp=r.value;next();
+};
+// 3. перевірка
+function next(){
+  show("s3");$("work").innerHTML="<p>Шукаємо роботу…</p>";$("info").textContent="";$("e3").textContent="";$("b3").hidden=true;
+  api(Object.assign({action:"g_next",olymp:st.olymp},auth())).then(function(d){
+    if(!d.ok){$("work").innerHTML="";$("e3").textContent=authErr(d);return}
+    if(d.done){show("s4");return}
+    st.klass=d.klass;st.code=d.code;st.n=d.n;
+    $("info").textContent=st.olymp+" · "+d.klass+" клас · робота "+d.code+" · у черзі в цьому класі: "+d.remaining;
+    var w=$("work");w.innerHTML="";
+    for(var k=1;k<=d.n;k++){
+      var t=document.createElement("div");t.className="task";
+      var h=document.createElement("h2");h.textContent="Завдання "+k;t.appendChild(h);
+      var fb=document.createElement("div");fb.className="files";t.appendChild(fb);
+      var mine=d.files.filter(function(f){return f.task===k});
+      if(!mine.length){var p=document.createElement("p");p.textContent="Учень не додав файлів до цього завдання.";fb.appendChild(p)}
+      mine.forEach(function(f){var b=document.createElement("div");fb.appendChild(b);showFile(b,f)});
+      var l=document.createElement("label");l.setAttribute("for","sc"+k);var lp=document.createElement("p");lp.textContent="Бали за завдання "+k;l.appendChild(lp);t.appendChild(l);
+      var i=document.createElement("input");i.type="text";i.id="sc"+k;i.className="score";i.setAttribute("inputmode","decimal");i.setAttribute("autocomplete","off");i.placeholder="0";t.appendChild(i);
+      w.appendChild(t);
+    }
+    $("b3").hidden=false;
+  }).catch(function(){$("work").innerHTML="";$("e3").textContent="Немає зв’язку із сервером."});
+}
+async function showFile(box,f){
+  box.textContent="Завантаження: "+f.name+"…";
+  try{
+    var r=await api(Object.assign({action:"g_file",olymp:st.olymp,klass:st.klass,code:st.code,id:f.id},auth()));
+    if(!r.ok)throw 0;
+    var bytes=b64ToBytes(r.b64),ext=f.name.split(".").pop().toLowerCase();box.textContent="";
+    if(["jpg","jpeg","png","webp"].indexOf(ext)>=0){
+      var im=new Image();im.alt=f.name;im.src=URL.createObjectURL(new Blob([bytes],{type:"image/"+(ext==="jpg"?"jpeg":ext)}));box.appendChild(im);
+    }else if(ext==="pdf"){
+      await initPdf();
+      var pdf=await pdfjsLib.getDocument({data:bytes}).promise,cw=box.clientWidth||700,dpr=Math.min(window.devicePixelRatio||1,2);
+      for(var n=1;n<=pdf.numPages;n++){
+        var page=await pdf.getPage(n),v0=page.getViewport({scale:1}),v=page.getViewport({scale:cw*dpr/v0.width});
+        var cv=document.createElement("canvas");cv.width=Math.floor(v.width);cv.height=Math.floor(v.height);
+        await page.render({canvasContext:cv.getContext("2d"),viewport:v}).promise;box.appendChild(cv);
+      }
+    }else if(ext==="txt"){
+      var pre=document.createElement("pre");pre.textContent=new TextDecoder().decode(bytes);box.appendChild(pre);
+    }else{
+      var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([bytes]));a.download=f.name;a.textContent="Завантажити файл: "+f.name;box.appendChild(a);
+    }
+  }catch(e){box.textContent="Не вдалося відкрити файл: "+f.name}
+}
+$("b3").onclick=function(){
+  var sc=[];
+  for(var k=1;k<=st.n;k++){
+    var v=$("sc"+k).value.trim().replace(",",".");
+    if(v===""||isNaN(+v)||+v<0){$("e3").textContent="Вкажіть бал за кожне завдання числом (0, якщо відповіді немає). Перевірте завдання "+k+".";$("sc"+k).focus();return}
+    sc.push(v);
+  }
+  $("e3").textContent="";$("b3").disabled=true;
+  api(Object.assign({action:"g_save",olymp:st.olymp,klass:st.klass,code:st.code,scores:sc},auth())).then(function(d){
+    if(d.ok||d.error==="already"){next();return}
+    $("e3").textContent=d.error==="bad scores"?"Некоректні бали.":"Не вдалося зберегти: "+(d.error||"помилка");
+  }).catch(function(){$("e3").textContent="Не вдалося зберегти. Перевірте з’єднання й натисніть ще раз."})
+  .finally(function(){$("b3").disabled=false});
+};
+$("back2").onclick=function(){show("s2")};
+$("b4").onclick=function(){show("s2")};
+</script>
+</body>
+</html>
