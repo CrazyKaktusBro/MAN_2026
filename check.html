@@ -52,8 +52,16 @@ a{color:var(--acc)}
   <h1>Олімпіада</h1>
   <div id="list"></div>
   <div id="e2" class="err"></div>
-  <button id="b2">Почати перевірку</button>
+  <button id="b2">Далі</button>
   <button class="back" id="back1">Назад</button>
+</section>
+
+<section id="s2c">
+  <h1>Клас</h1>
+  <div id="clist"></div>
+  <div id="e2c" class="err"></div>
+  <button id="b2c">Почати перевірку</button>
+  <button class="back" id="back2c">Назад</button>
 </section>
 
 <section id="s3">
@@ -92,6 +100,12 @@ function initPdf(){
 function authErr(d){return d.error==="bad key"?"Невірний код доступу журі.":d.error==="no key"?"На сервері не задано GRADER_KEY (Project Settings → Script properties).":d.error==="no name"?"Вкажіть ім’я перевіряючого.":"Помилка сервера: "+(d.error||"невідома")}
 
 // 1. ім'я + ключ
+function addOpt(list,label,value,name){
+  var l=document.createElement("label");l.className="opt";
+  var r=document.createElement("input");r.type="radio";r.name=name;r.value=value;
+  var sp=document.createElement("span");sp.textContent=label;
+  l.appendChild(r);l.appendChild(sp);list.appendChild(l);
+}
 $("b1").onclick=function(){
   var n=$("nm").value.trim().replace(/\s+/g," "),k=$("ky").value;
   if(n.length<2){$("e1").textContent="Вкажіть ім’я перевіряючого.";return}
@@ -100,12 +114,7 @@ $("b1").onclick=function(){
   api(Object.assign({action:"g_olymps"},auth())).then(function(d){
     if(!d.ok){$("e1").textContent=authErr(d);return}
     $("list").innerHTML="";
-    d.list.forEach(function(o){
-      var l=document.createElement("label");l.className="opt";
-      var r=document.createElement("input");r.type="radio";r.name="ol";r.value=o;
-      var sp=document.createElement("span");sp.textContent=o;
-      l.appendChild(r);l.appendChild(sp);$("list").appendChild(l);
-    });
+    d.list.forEach(function(o){addOpt($("list"),o,o,"ol")});
     show("s2");
   }).catch(function(){$("e1").textContent="Немає зв’язку із сервером."}).finally(function(){$("b1").disabled=false});
 };
@@ -115,12 +124,23 @@ $("back1").onclick=function(){show("s1")};
 $("b2").onclick=function(){
   var r=document.querySelector("input[name=ol]:checked");
   if(!r){$("e2").textContent="Оберіть олімпіаду.";return}
-  $("e2").textContent="";st.olymp=r.value;next();
+  $("e2").textContent="";st.olymp=r.value;$("b2").disabled=true;
+  api(Object.assign({action:"g_classes",olymp:st.olymp},auth())).then(function(d){
+    if(!d.ok){$("e2").textContent=authErr(d);return}
+    if(!d.list.length){$("e2").textContent="У цій олімпіаді немає папок класів.";return}
+    var cl=$("clist");cl.innerHTML="";$("e2c").textContent="";
+    addOpt(cl,"Усі класи (за порядком)","","kl");
+    d.list.forEach(function(k){addOpt(cl,k+" клас",k,"kl")});
+    cl.querySelector("input").checked=true;
+    show("s2c");
+  }).catch(function(){$("e2").textContent="Немає зв’язку із сервером."}).finally(function(){$("b2").disabled=false});
 };
+$("back2c").onclick=function(){show("s2")};
+$("b2c").onclick=function(){st.only=document.querySelector("input[name=kl]:checked").value;next()};
 // 3. перевірка
 function next(){
   show("s3");$("work").innerHTML="<p>Шукаємо роботу…</p>";$("info").textContent="";$("e3").textContent="";$("b3").hidden=true;
-  api(Object.assign({action:"g_next",olymp:st.olymp},auth())).then(function(d){
+  api(Object.assign({action:"g_next",olymp:st.olymp,only:st.only||""},auth())).then(function(d){
     if(!d.ok){$("work").innerHTML="";$("e3").textContent=authErr(d);return}
     if(d.done){show("s4");return}
     st.klass=d.klass;st.code=d.code;st.n=d.n;
@@ -177,8 +197,8 @@ $("b3").onclick=function(){
   }).catch(function(){$("e3").textContent="Не вдалося зберегти. Перевірте з’єднання й натисніть ще раз."})
   .finally(function(){$("b3").disabled=false});
 };
-$("back2").onclick=function(){show("s2")};
-$("b4").onclick=function(){show("s2")};
+$("back2").onclick=function(){show("s2c")};
+$("b4").onclick=function(){show("s2c")};
 </script>
 </body>
 </html>
