@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
+<script>try{var t=localStorage.getItem("theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Перевірка робіт</title>
@@ -9,11 +10,12 @@
 <style>
 :root{--bg:#fff;--fg:#000;--mute:#767676;--line:#d4d4d4;--acc:#1b3fd1;--err:#c62828;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#000;--fg:#fff;--mute:#9a9a9a;--line:#3a3a3a;--acc:#7f9bff;--err:#ff8a80}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--mute:#9a9a9a;--line:#3a3a3a;--acc:#7f9bff;--err:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--mute:#9a9a9a;--line:#3a3a3a;--acc:#7f9bff;--err:#ff8a80;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:400 17px/1.5 Manrope,system-ui,sans-serif}
-main{max-width:380px;margin:0 auto;padding:12vh 24px 64px}
-main.wide{max-width:760px;padding-top:6vh}
+main{max-width:380px;margin:0 auto;padding:max(12vh,64px) 24px 64px}
+main.wide{max-width:760px;padding-top:64px}
 section{display:none;flex-direction:column;gap:28px}
 section.on{display:flex}
 h1{font-weight:300;font-size:2.4rem;line-height:1.1;margin:0;letter-spacing:-.02em}
@@ -33,9 +35,11 @@ button:disabled{opacity:.5;cursor:default}
 .files pre{white-space:pre-wrap;margin:0;font:inherit;border:1px solid var(--line);padding:12px}
 .score{max-width:160px}
 a{color:var(--acc)}
+#theme{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:16px;width:auto;padding:8px 12px;font-size:.85rem;font-weight:400;background:var(--bg);color:var(--fg);border:1px solid var(--line);z-index:5}
 </style>
 </head>
 <body>
+<button id="theme" type="button"></button>
 <main id="m">
 
 <section id="s1" class="on">
@@ -80,6 +84,18 @@ a{color:var(--acc)}
 
 </main>
 <script>
+(function(){
+  var root=document.documentElement,b=document.getElementById("theme");
+  function cur(){var t=root.getAttribute("data-theme");if(t)return t;return window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"}
+  function apply(t,save){
+    root.setAttribute("data-theme",t);
+    b.textContent=t==="dark"?"Світла тема":"Темна тема";
+    b.setAttribute("aria-label",t==="dark"?"Увімкнути світлу тему":"Увімкнути темну тему");
+    if(save){try{localStorage.setItem("theme",t)}catch(e){}}
+  }
+  apply(cur(),false);
+  b.onclick=function(){apply(cur()==="dark"?"light":"dark",true)};
+})();
 var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgmir1SIIFI-MRlq5heSY5Dvc6YJ3Ec6tVjgnmkktpM3rYg/exec";
 var st={};
 function $(i){return document.getElementById(i)}
