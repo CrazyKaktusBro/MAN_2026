@@ -260,7 +260,7 @@ $("b-pick").onclick=function(){
     $("mailed").textContent=d.mailed?"Копію також надіслано на вашу пошту.":"";
     $("note").hidden=false;show("s-email");
   })
-  .catch(function(e){var m=e&&e.message;$("p-err").textContent=m==="exists"?"Цю пошту вже зареєстровано.":m==="closed"?"Реєстрацію на цю олімпіаду закрито.":"Не вдалося зберегти. Спробуйте ще раз."})
+  .catch(function(e){var m=e&&e.message;$("p-err").textContent=m==="exists"?"Цю пошту вже зареєстровано.":m==="closed"?"Реєстрацію на цю олімпіаду закрито.":"Не вдалося зберегти ("+(m==="missing fields"?"не заповнені область, школа або клас — поверніться назад і перевірте":(e instanceof SyntaxError||m==="Failed to fetch")?"сервер не відповідає: не оновлено розгортання або немає дозволів":m)+"). Спробуйте ще раз."})
   .finally(function(){btn.disabled=false;btn.textContent="Завершити реєстрацію"});
 };
 // login: code
