@@ -49,6 +49,9 @@ select option{background:var(--bg);color:var(--fg)}
 textarea{width:100%;min-height:120px;border:1px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:10px;border-radius:0;outline:0;resize:vertical}
 textarea:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
 textarea[readonly]{opacity:.6}
+.pages.collapsed{display:none}
+.tgl{width:auto;align-self:flex-start;background:transparent;color:var(--fg);border:1px solid var(--line);padding:8px 14px;font-weight:400;font-size:.9rem}
+a.tgl{color:var(--fg);text-decoration:none;display:inline-block}
 </style>
 </head>
 <body>
@@ -298,9 +301,22 @@ function stamp(ctx,w,h){
   for(var y=-h;y<h*1.5;y+=w/5)for(var x=-w;x<w*1.5;x+=w/1.6)ctx.fillText(t,x,y);
   ctx.restore();
 }
+// Кнопка «Завантажити завдання» — лише для завдань, у таблиці яких указано «файл»
+function addDownload(box,bytes,name){
+  var a=document.createElement("a");a.className="tgl";a.textContent="Завантажити завдання (PDF)";
+  a.href=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));a.download=name;
+  box.parentNode.insertBefore(a,box);
+}
 async function renderPdf(bytes,box){
   await initPdf();
   var pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+  if(pdf.numPages>2){   // довгі завдання (3+ сторінок) можна згорнути
+    var tg=document.createElement("button");tg.type="button";tg.className="tgl";
+    tg.setAttribute("aria-controls",box.id);
+    var lab=function(){var c=box.classList.contains("collapsed");tg.textContent=(c?"Розгорнути завдання":"Згорнути завдання")+" ("+pdf.numPages+" стор.)";tg.setAttribute("aria-expanded",c?"false":"true")};
+    tg.onclick=function(){box.classList.toggle("collapsed");lab()};
+    lab();box.parentNode.insertBefore(tg,box);
+  }
   var dpr=Math.min(window.devicePixelRatio||1,2),cw=box.clientWidth||700;
   for(var n=1;n<=pdf.numPages;n++){
     var page=await pdf.getPage(n),v0=page.getViewport({scale:1}),v=page.getViewport({scale:cw*dpr/v0.width});
@@ -405,7 +421,10 @@ async function openExam(){
     for(var i=0;i<r.files.length;i++){
       var box=$("pg"+i),p=await api({action:"pdf",code:st.code,id:r.files[i].id});
       if(!p.ok)throw new Error("pdf");
-      box.innerHTML="";await renderPdf(b64ToBytes(p.b64),box);
+      var bytes=b64ToBytes(p.b64);
+      box.innerHTML="";
+      if((r.dl||[])[i])addDownload(box,bytes,r.files[i].name||("Завдання-"+(i+1)+".pdf"));
+      await renderPdf(bytes,box);
     }
     $("b-send").hidden=false;
   }catch(e){
