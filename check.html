@@ -44,12 +44,20 @@ a{color:var(--acc)}
 
 <section id="s1" class="on">
   <h1>Перевірка</h1>
-  <label for="nm"><p>Ім’я перевіряючого</p></label>
-  <input id="nm" type="text" placeholder="Прізвище та ім’я" autocomplete="name">
-  <label for="ky"><p>Код доступу журі</p></label>
-  <input id="ky" type="password" autocomplete="current-password">
+  <label for="em"><p>Електронна пошта журі</p></label>
+  <input id="em" type="text" inputmode="email" placeholder="name@example.com" autocomplete="email">
   <div id="e1" class="err"></div>
-  <button id="b1">Далі</button>
+  <button id="b1">Надіслати код</button>
+</section>
+
+<section id="s1b">
+  <h1>Код з пошти</h1>
+  <p>Якщо цю пошту знайдено в таблиці журі, на неї надіслано 6-значний код. Він діє 10 хвилин.</p>
+  <label for="cd"><p>Код підтвердження</p></label>
+  <input id="cd" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+  <div id="e1b" class="err"></div>
+  <button id="b1b">Увійти</button>
+  <button class="back" id="back0">Назад</button>
 </section>
 
 <section id="s2">
@@ -100,7 +108,7 @@ var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgm
 var st={};
 function $(i){return document.getElementById(i)}
 function api(b){return fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(b)}).then(function(x){return x.json()})}
-function auth(){return {name:st.name,key:st.key}}
+function auth(){return {token:st.token}}
 function show(id){
   document.querySelectorAll("section").forEach(function(s){s.classList.toggle("on",s.id===id)});
   $("m").classList.toggle("wide",id==="s3");window.scrollTo(0,0);
@@ -113,36 +121,50 @@ function initPdf(){
   });
   return pdfReady;
 }
-function authErr(d){return d.error==="bad key"?"Невірний код доступу журі.":d.error==="no key"?"На сервері не задано GRADER_KEY (Project Settings → Script properties).":d.error==="no name"?"Вкажіть ім’я перевіряючого.":"Помилка сервера: "+(d.error||"невідома")}
-
-// 1. ім'я + ключ
 function addOpt(list,label,value,name){
   var l=document.createElement("label");l.className="opt";
   var r=document.createElement("input");r.type="radio";r.name=name;r.value=value;
   var sp=document.createElement("span");sp.textContent=label;
   l.appendChild(r);l.appendChild(sp);list.appendChild(l);
 }
+// сесія закінчилась → знову на вхід
+function expired(d){if(d&&d.error==="bad session"){st={};$("e1").textContent="Сесія закінчилась. Увійдіть знову.";show("s1");return true}return false}
+function err(d){return d.error==="forbidden"?"Ця робота поза вашою областю/районом.":"Помилка сервера: "+(d.error||"невідома")}
+
+// 1. пошта → код на пошту
 $("b1").onclick=function(){
-  var n=$("nm").value.trim().replace(/\s+/g," "),k=$("ky").value;
-  if(n.length<2){$("e1").textContent="Вкажіть ім’я перевіряючого.";return}
-  if(!k){$("e1").textContent="Введіть код доступу журі.";return}
-  st.name=n;st.key=k;$("e1").textContent="";$("b1").disabled=true;
-  api(Object.assign({action:"g_olymps"},auth())).then(function(d){
-    if(!d.ok){$("e1").textContent=authErr(d);return}
-    $("list").innerHTML="";
-    d.list.forEach(function(o){addOpt($("list"),o,o,"ol")});
-    show("s2");
+  var e=$("em").value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){$("e1").textContent="Введіть коректну пошту.";return}
+  st.email=e;$("e1").textContent="";$("b1").disabled=true;
+  api({action:"g_login",email:e}).then(function(d){
+    if(!d.ok){$("e1").textContent="Введіть коректну пошту.";return}
+    $("cd").value="";$("e1b").textContent="";show("s1b");
   }).catch(function(){$("e1").textContent="Немає зв’язку із сервером."}).finally(function(){$("b1").disabled=false});
 };
-$("ky").onkeydown=function(e){if(e.key==="Enter")$("b1").click()};
+$("em").onkeydown=function(e){if(e.key==="Enter")$("b1").click()};
+$("back0").onclick=function(){show("s1")};
+// 1б. код підтвердження
+$("b1b").onclick=function(){
+  var c=$("cd").value.trim();
+  if(!/^\d{6}$/.test(c)){$("e1b").textContent="Код складається з 6 цифр.";return}
+  $("e1b").textContent="";$("b1b").disabled=true;
+  api({action:"g_verify",email:st.email,code:c}).then(function(d){
+    if(!d.ok){$("e1b").textContent=d.error==="no folders"?"Для вашого акаунта не знайдено папок із роботами.":"Невірний або прострочений код.";return}
+    st.token=d.token;$("list").innerHTML="";
+    d.olymps.forEach(function(o){addOpt($("list"),o,o,"ol")});
+    $("e2").textContent="";show("s2");
+  }).catch(function(){$("e1b").textContent="Немає зв’язку із сервером."}).finally(function(){$("b1b").disabled=false});
+};
+$("cd").onkeydown=function(e){if(e.key==="Enter")$("b1b").click()};
 // 2. олімпіада
-$("back1").onclick=function(){show("s1")};
+$("back1").onclick=function(){st={};show("s1")};
 $("b2").onclick=function(){
   var r=document.querySelector("input[name=ol]:checked");
   if(!r){$("e2").textContent="Оберіть олімпіаду.";return}
   $("e2").textContent="";st.olymp=r.value;$("b2").disabled=true;
   api(Object.assign({action:"g_classes",olymp:st.olymp},auth())).then(function(d){
-    if(!d.ok){$("e2").textContent=authErr(d);return}
+    if(expired(d))return;
+    if(!d.ok){$("e2").textContent=err(d);return}
     if(!d.list.length){$("e2").textContent="У цій олімпіаді немає папок класів.";return}
     var cl=$("clist");cl.innerHTML="";$("e2c").textContent="";
     addOpt(cl,"Усі класи (за порядком)","","kl");
@@ -157,17 +179,18 @@ $("b2c").onclick=function(){st.only=document.querySelector("input[name=kl]:check
 function next(){
   show("s3");$("work").innerHTML="<p>Шукаємо роботу…</p>";$("info").textContent="";$("e3").textContent="";$("b3").hidden=true;
   api(Object.assign({action:"g_next",olymp:st.olymp,only:st.only||""},auth())).then(function(d){
-    if(!d.ok){$("work").innerHTML="";$("e3").textContent=authErr(d);return}
+    if(expired(d))return;
+    if(!d.ok){$("work").innerHTML="";$("e3").textContent=err(d);return}
     if(d.done){show("s4");return}
-    st.klass=d.klass;st.code=d.code;st.n=d.n;
-    $("info").textContent=st.olymp+" · "+d.klass+" клас · робота "+d.code+" · у черзі в цьому класі: "+d.remaining;
+    st.leaf=d.leaf;st.klass=d.klass;st.code=d.code;st.n=d.n;
+    $("info").textContent=st.olymp+" · "+d.label+" · "+d.klass+" клас · робота "+d.code+" · у черзі в цьому класі: "+d.remaining;
     var w=$("work");w.innerHTML="";
     for(var k=1;k<=d.n;k++){
       var t=document.createElement("div");t.className="task";
       var h=document.createElement("h2");h.textContent="Завдання "+k;t.appendChild(h);
       var fb=document.createElement("div");fb.className="files";t.appendChild(fb);
       var mine=d.files.filter(function(f){return f.task===k});
-      if(!mine.length){var p=document.createElement("p");p.textContent="Учень не додав файлів до цього завдання.";fb.appendChild(p)}
+      if(!mine.length){var p=document.createElement("p");p.textContent="Учень не додав відповіді до цього завдання.";fb.appendChild(p)}
       mine.forEach(function(f){var b=document.createElement("div");fb.appendChild(b);showFile(b,f)});
       var l=document.createElement("label");l.setAttribute("for","sc"+k);var lp=document.createElement("p");lp.textContent="Бали за завдання "+k;l.appendChild(lp);t.appendChild(l);
       var i=document.createElement("input");i.type="text";i.id="sc"+k;i.className="score";i.setAttribute("inputmode","decimal");i.setAttribute("autocomplete","off");i.placeholder="0";t.appendChild(i);
@@ -179,7 +202,7 @@ function next(){
 async function showFile(box,f){
   box.textContent="Завантаження: "+f.name+"…";
   try{
-    var r=await api(Object.assign({action:"g_file",olymp:st.olymp,klass:st.klass,code:st.code,id:f.id},auth()));
+    var r=await api(Object.assign({action:"g_file",leaf:st.leaf,klass:st.klass,code:st.code,id:f.id},auth()));
     if(!r.ok)throw 0;
     var bytes=b64ToBytes(r.b64),ext=f.name.split(".").pop().toLowerCase();box.textContent="";
     if(["jpg","jpeg","png","webp"].indexOf(ext)>=0){
@@ -207,7 +230,8 @@ $("b3").onclick=function(){
     sc.push(v);
   }
   $("e3").textContent="";$("b3").disabled=true;
-  api(Object.assign({action:"g_save",olymp:st.olymp,klass:st.klass,code:st.code,scores:sc},auth())).then(function(d){
+  api(Object.assign({action:"g_save",leaf:st.leaf,klass:st.klass,code:st.code,scores:sc},auth())).then(function(d){
+    if(expired(d))return;
     if(d.ok||d.error==="already"){next();return}
     $("e3").textContent=d.error==="bad scores"?"Некоректні бали.":"Не вдалося зберегти: "+(d.error||"помилка");
   }).catch(function(){$("e3").textContent="Не вдалося зберегти. Перевірте з’єднання й натисніть ще раз."})
