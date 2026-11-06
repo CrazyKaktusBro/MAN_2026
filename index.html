@@ -52,6 +52,7 @@ textarea[readonly]{opacity:.6}
 .pages.collapsed{display:none}
 .tgl{width:auto;align-self:flex-start;background:transparent;color:var(--fg);border:1px solid var(--line);padding:8px 14px;font-weight:400;font-size:.9rem}
 a.tgl{color:var(--fg);text-decoration:none;display:inline-block}
+progress{width:100%;height:10px;accent-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -83,6 +84,8 @@ a.tgl{color:var(--fg);text-decoration:none;display:inline-block}
   <h1>Реєстрація</h1>
   <label for="fio"><p>Прізвище, ім’я та по батькові</p></label>
   <input id="fio" type="text" placeholder="Шевченко Тарас Григорович" autocomplete="name">
+  <label for="tch"><p>Вчитель(і), який(і) вас готує(ють)</p></label>
+  <input id="tch" type="text" placeholder="Прізвище І. П. (якщо кілька — через кому)" autocomplete="off">
   <div id="n-err" class="err"></div>
   <button id="b-name">Далі</button>
   <button class="back" data-go="s-choice">Назад</button>
@@ -134,12 +137,27 @@ a.tgl{color:var(--fg);text-decoration:none;display:inline-block}
   <p id="timer"></p>
   <div id="tasks"></div>
   <div id="x-err" class="err"></div>
-  <button id="b-send">Надіслати відповіді</button>
+  <button id="b-send">Здати завдання</button>
+  <div id="sure" hidden>
+    <p>Ви впевнені, що хочете здати завдання? Повернутись до них після цього буде неможливо.</p>
+    <button id="sure-yes">Так, здати</button>
+    <button id="sure-no" class="ghost">Ні, повернутись до завдань</button>
+  </div>
+</section>
+
+<section id="s-proct">
+  <h1>Прокторінг</h1>
+  <p>Завантажте запис прокторінгу у форматі MP4. Не закривайте й не оновлюйте сторінку, доки завантаження не завершиться.</p>
+  <label class="upbtn">Обрати файл MP4<input id="pfile" type="file" accept="video/mp4,.mp4"></label>
+  <p id="pname"></p>
+  <progress id="pbar" value="0" max="100" hidden></progress>
+  <div id="p-st" class="err"></div>
+  <button id="b-proct" disabled>Завантажити</button>
 </section>
 
 <section id="s-done">
-  <h1>Відповіді надіслано</h1>
-  <p>Дякуємо за участь. Результати буде опубліковано після перевірки.</p>
+  <h1>Завдання здано</h1>
+  <p>Дякуємо за участь. Повернутись до олімпіади з цим кодом неможливо. Результати буде опубліковано після перевірки.</p>
   <button id="b-home">На початок</button>
 </section>
 
@@ -170,7 +188,7 @@ function show(id){
 document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){show(b.dataset.go)}});
 
 // пошта й ім'я зберігаються в адресі (#e=…&n=…) — після реєстрації повертаємось на вибір «вхід / реєстрація»
-function setHash(){var p=new URLSearchParams();if(st.email)p.set("e",st.email);if(st.fio)p.set("n",st.fio);history.replaceState(null,"",location.pathname+location.search+(p.toString()?"#"+p.toString():""))}
+function setHash(){var p=new URLSearchParams();if(st.email)p.set("e",st.email);if(st.fio)p.set("n",st.fio);if(st.teachers)p.set("t",st.teachers);history.replaceState(null,"",location.pathname+location.search+(p.toString()?"#"+p.toString():""))}
 function clearHash(){history.replaceState(null,"",location.pathname+location.search)}
 function toChoice(){$("who").textContent=st.email+(st.fio?" · "+st.fio:"");show("s-choice")}
 // 1. email
@@ -181,13 +199,15 @@ $("b-email").onclick=function(){
 };
 $("s-choice").querySelector("[data-go]").addEventListener("click",function(){st.email="";st.fio="";$("email").value="";$("fio").value="";clearHash()});
 // 2. choice
-$("b-reg").onclick=function(){$("note").hidden=true;if(st.fio)$("fio").value=st.fio;show("s-name")};
+$("b-reg").onclick=function(){$("note").hidden=true;if(st.fio)$("fio").value=st.fio;if(st.teachers)$("tch").value=st.teachers;show("s-name")};
 $("b-login").onclick=function(){$("code").value="";$("c-err").textContent="";show("s-code")};
 // reg: name
 $("b-name").onclick=function(){
   var v=$("fio").value.trim().replace(/\s+/g," ");
   if(v.split(" ").length<2){$("n-err").textContent="Вкажіть щонайменше прізвище та ім’я.";return}
-  $("n-err").textContent="";st.fio=v;setHash();show("s-region");loadGeo();
+  var t=$("tch").value.trim().replace(/\s+/g," ");
+  if(t.length<2){$("n-err").textContent="Вкажіть вчителя (якщо кілька — через кому).";return}
+  $("n-err").textContent="";st.fio=v;st.teachers=t;setHash();show("s-region");loadGeo();
 };
 // reg: область → район → школа (списки з таблиць «області», «райони», «школи»)
 var GEO=null,SCHL=null;
@@ -261,10 +281,10 @@ var WEB_APP_URL="https://script.google.com/macros/s/AKfycbyst9nVqoViHYjR2KKP_Jgm
 function fmt(ms){return new Date(ms).toLocaleString("uk-UA",{timeZone:"Europe/Kyiv",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}
 function loadPick(){
   $("list").innerHTML="<p>Завантаження…</p>";$("b-pick").disabled=true;$("p-err").textContent="";
-  api({action:"status",region:st.region,district:st.district}).then(function(d){
+  api({action:"status",region:st.region,district:st.district,klass:st.klass}).then(function(d){
     if(!d.ok)throw new Error(d.error||"помилка сервера");
     var names=Object.keys(d.st);
-    if(!names.length){$("list").innerHTML="";$("p-err").textContent="Для вашої області та району зараз немає олімпіад.";return}
+    if(!names.length){$("list").innerHTML="";$("p-err").textContent="Для вашого району та класу зараз немає олімпіад із завданнями.";return}
     var any=false;
     $("list").innerHTML=names.map(function(o){
       var s=(d.st[o]&&d.st[o].reg)||{s:"closed"},open=s.s==="open";any=any||open;
@@ -280,7 +300,7 @@ $("b-pick").onclick=function(){
   st.olymp=r.value;$("p-err").textContent="";
   var btn=$("b-pick");btn.disabled=true;btn.textContent="Збереження…";
   fetch(WEB_APP_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({email:st.email,fio:st.fio,olymp:st.olymp,region:st.region,district:st.district,school:st.school,klass:st.klass})})
+    body:JSON.stringify({email:st.email,fio:st.fio,olymp:st.olymp,region:st.region,district:st.district,school:st.school,klass:st.klass,teachers:st.teachers})})
   .then(function(x){return x.json()})
   .then(function(d){
     if(!d.ok)throw new Error(d.error||"error");
@@ -303,13 +323,13 @@ function enter(){
     body:JSON.stringify({action:"login",code:c})})
   .then(function(x){return x.json()})
   .then(function(d){
-    if(!d.ok)throw new Error(d.error==="closed"?(d.state==="soon"?"soon:"+d.at:"closed"):"bad");
+    if(!d.ok)throw new Error(d.error==="closed"?(d.state==="soon"?"soon:"+d.at:"closed"):d.error==="finished"?"finished":"bad");
     $("c-err").textContent="";st.email=d.email;st.fio=d.fio;st.olymp=d.olymp;st.code=c;
     st.until=d.until;st.off=d.now-Date.now();st.files=d.files||[];st.texts=d.texts||{};
-    if(d.submitted){show("s-done");return}
+    if(d.phase==="proctor"){showProct();return}
     openExam();
   })
-  .catch(function(e){var m=(e&&e.message)||"";$("c-err").textContent=m==="closed"?"Вхід на цю олімпіаду зараз закритий.":m.indexOf("soon:")===0?"Вхід відкриється "+fmt(+m.slice(5))+".":"Невірний код або немає зв’язку. Спробуйте ще раз."})
+  .catch(function(e){var m=(e&&e.message)||"";$("c-err").textContent=m==="finished"?"Цей код уже використано: завдання здано, повторний вхід неможливий.":m==="closed"?"Вхід на цю олімпіаду зараз закритий.":m.indexOf("soon:")===0?"Вхід відкриється "+fmt(+m.slice(5))+".":"Невірний код або немає зв’язку. Спробуйте ще раз."})
   .finally(function(){btn.disabled=false;btn.textContent="Увійти"});
 }
 var PDF_WORKER="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",pdfReady=null;
@@ -386,17 +406,46 @@ function uploadFiles(k,files,list){
   });
 }
 // Час вийшов: блокуємо додавання файлів; усе вже завантажене лишається збереженим
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function getVal(x){return x.tagName==="TEXTAREA"?x.value:Array.prototype.filter.call(x.querySelectorAll("input"),function(c){return c.checked}).map(function(c){return c.value}).join("\n")}
+function answerEls(){return document.querySelectorAll("#tasks textarea, #tasks .test")}
+function answerHtml(n,type,opts){
+  if(type==="text")return '<label for="tx'+n+'"><p>Ваша відповідь</p></label><textarea id="tx'+n+'" data-k="'+n+'" maxlength="20000"></textarea>';
+  if(type==="test"){
+    if(!opts||!opts.length)return '<p class="err" style="min-height:0">Варіанти відповідей не задано. Зверніться до організатора.</p>';
+    return '<div class="test" data-k="'+n+'"><p>Оберіть відповідь(і):</p>'+opts.map(function(o){return '<label class="opt"><input type="checkbox" value="'+esc(o)+'"><span>'+esc(o)+'</span></label>'}).join("")+'</div>';
+  }
+  return '<label class="upbtn">Додати файл відповіді<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.txt" data-k="'+n+'"></label><div class="flist" id="fl'+n+'"></div>';
+}
 function saveTexts(final){
-  var list=Array.prototype.filter.call(document.querySelectorAll("#tasks textarea"),function(x){return x.value!==x.dataset.saved});
+  var list=Array.prototype.filter.call(answerEls(),function(x){return getVal(x)!==x.dataset.saved});
   if(!list.length||(st.locked&&final!==true))return Promise.resolve(true);
   return Promise.all(list.map(function(x){
-    var v=x.value;
+    var v=getVal(x);
     return api({action:"text",code:st.code,task:+x.dataset.k,text:v}).then(function(d){
       if(d.ok){x.dataset.saved=v;return true}
       if(d.error==="closed"&&!st.ending)endExam();
       return false;
     }).catch(function(){return false});
   })).then(function(a){return a.every(Boolean)});
+}
+function afterSubmit(d){if(d&&d.proctor)showProct();else show("s-done")}
+// Час вийшов: блокуємо відповіді, зберігаємо введене й здаємо завдання автоматично
+function endExam(){
+  if(st.ending)return;st.ending=true;clearInterval(tmr);clearInterval(st.tsv);$("timer").textContent="";
+  document.querySelectorAll("#tasks .upbtn").forEach(function(x){x.style.display="none"});
+  document.querySelectorAll("#tasks .fi button").forEach(function(x){x.remove()});
+  document.querySelectorAll("#tasks textarea").forEach(function(x){x.readOnly=true});
+  document.querySelectorAll("#tasks .test input").forEach(function(x){x.disabled=true});
+  $("b-send").hidden=true;$("sure").hidden=true;
+  $("x-err").textContent="Олімпіаду завершено. Зберігаємо відповіді…";
+  saveTexts(true).then(function(){
+    st.locked=true;
+    return api({action:"finish",code:st.code,auto:true}).catch(function(){return null});
+  }).then(function(d){
+    if(d&&d.ok){afterSubmit(d)}
+    else $("x-err").textContent="Олімпіаду завершено. Збережено все, що встигли ввести.";
+  });
 }
 // Час вийшов: блокуємо відповіді й востаннє зберігаємо введений текст; завантажені файли вже збережені
 function endExam(){
@@ -433,13 +482,17 @@ async function openExam(){
     var r=await api({action:"files",code:st.code});
     if(!r.ok)throw new Error(r.error||"none");if(!r.files.length)throw new Error("no pdf");
     $("tasks").innerHTML=r.files.map(function(f,k){
-      return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+r.files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+
-      ((r.types||[])[k]==="text"
-        ?'<label for="tx'+(k+1)+'"><p>Ваша відповідь</p></label><textarea id="tx'+(k+1)+'" data-k="'+(k+1)+'" maxlength="20000"></textarea>'
-        :'<label class="upbtn">Додати файл відповіді<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.txt" data-k="'+(k+1)+'"></label><div class="flist" id="fl'+(k+1)+'"></div>')+'</div>'}).join("");
+      return '<div class="task"><span class="meta">Завдання '+(k+1)+' з '+r.files.length+'</span><div class="pages" id="pg'+k+'"><p>Завантаження…</p></div>'+answerHtml(k+1,(r.types||[])[k],(r.opts||[])[k])+'</div>'}).join("");
     startExam();
-    document.querySelectorAll("#tasks textarea").forEach(function(x){
-      var v=(st.texts||{})[x.dataset.k]||"";x.value=v;x.dataset.saved=v;x.onblur=saveTexts;
+    answerEls().forEach(function(x){
+      var v=(st.texts||{})[x.dataset.k]||"";
+      if(x.tagName==="TEXTAREA"){x.value=v;x.onblur=saveTexts}
+      else{
+        var picked=v.split("\n");
+        x.querySelectorAll("input").forEach(function(c){c.checked=picked.indexOf(c.value)>=0});
+        x.addEventListener("change",function(){clearTimeout(x._t);x._t=setTimeout(saveTexts,1200)});
+      }
+      x.dataset.saved=v;
     });
     clearInterval(st.tsv);st.tsv=setInterval(saveTexts,20000);
     (st.files||[]).forEach(function(f){var l=$("fl"+f.task);if(l)fileRow(l,f)});
@@ -464,25 +517,67 @@ $("code").onkeydown=function(e){if(e.key==="Enter")enter()};
 // exam
 $("b-send").onclick=function(){
   if(document.querySelector("#tasks .fi.ph")){$("x-err").textContent="Зачекайте: файли ще завантажуються.";return}
-  var empty=0;
-  document.querySelectorAll("#tasks .flist").forEach(function(l){if(!l.querySelector(".fi"))empty++});
-  document.querySelectorAll("#tasks textarea").forEach(function(x){if(!x.value.trim())empty++});
-  if(empty&&!window.confirmed){$("x-err").textContent="Завдань без відповіді: "+empty+". Натисніть ще раз, щоб надіслати.";window.confirmed=true;return}
-  window.confirmed=false;$("x-err").textContent="";
-  var b=$("b-send");b.disabled=true;
+  $("x-err").textContent="";$("b-send").hidden=true;$("sure").hidden=false;
+};
+$("sure-no").onclick=function(){$("sure").hidden=true;$("b-send").hidden=false};
+$("sure-yes").onclick=function(){
+  var b=$("sure-yes");b.disabled=true;$("sure-no").disabled=true;
   saveTexts(true).then(function(ok){
     if(!ok)throw 0;
     return api({action:"finish",code:st.code});
   }).then(function(d){
-    if(!d.ok){if(d.error==="closed")endExam();else if(d.error==="submitted"){show("s-done");return}throw 0}
-    st.locked=true;clearInterval(tmr);clearInterval(st.tsv);show("s-done");
-  }).catch(function(){if(!st.ending)$("x-err").textContent="Не вдалося надіслати. Спробуйте ще раз."})
-  .finally(function(){b.disabled=false});
+    if(!d.ok){if(d.error==="closed"){endExam();return}throw 0}
+    st.locked=true;clearInterval(tmr);clearInterval(st.tsv);afterSubmit(d);
+  }).catch(function(){if(!st.ending){$("x-err").textContent="Не вдалося здати. Спробуйте ще раз.";$("sure").hidden=true;$("b-send").hidden=false}})
+  .finally(function(){b.disabled=false;$("sure-no").disabled=false});
+};
+
+// ---------- прокторінг (MP4) ----------
+var PCH=8*1024*1024;
+function showProct(){$("pfile").value="";$("pfile").disabled=false;$("pname").textContent="";$("p-st").textContent="";$("pbar").hidden=true;$("b-proct").disabled=true;show("s-proct")}
+$("pfile").onchange=function(){
+  var f=this.files[0];
+  if(!f){$("b-proct").disabled=true;return}
+  if(!/\.mp4$/i.test(f.name)){$("p-st").textContent="Потрібен файл у форматі MP4.";$("b-proct").disabled=true;this.value="";return}
+  $("p-st").textContent="";$("pname").textContent=f.name+" · "+Math.round(f.size/1048576)+" МБ";$("b-proct").disabled=false;
+};
+function putChunk(url,blob,start,total,onp){
+  return new Promise(function(res,rej){
+    var x=new XMLHttpRequest();x.open("PUT",url);
+    x.setRequestHeader("Content-Range","bytes "+start+"-"+(start+blob.size-1)+"/"+total);
+    x.upload.onprogress=function(e){if(e.lengthComputable)onp(start+e.loaded)};
+    x.onload=function(){res(x)};x.onerror=function(){rej(new Error("мережа"))};x.send(blob);
+  });
+}
+$("b-proct").onclick=async function(){
+  var f=$("pfile").files[0];if(!f)return;
+  var b=this;b.disabled=true;$("pfile").disabled=true;$("p-st").textContent="Підготовка…";$("pbar").hidden=false;$("pbar").value=0;
+  try{
+    var s=await api({action:"p_start",code:st.code,size:f.size,origin:location.origin});
+    if(!s.ok)throw new Error(s.error||"сесія");
+    var start=0,fileId=null,tries=0,pr=function(done){var pc=Math.min(100,Math.round(done/f.size*100));$("pbar").value=pc;$("p-st").textContent="Завантаження: "+pc+"% — не закривайте сторінку"};
+    while(start<f.size){
+      var end=Math.min(start+PCH,f.size),x;
+      try{x=await putChunk(s.url,f.slice(start,end),start,f.size,pr)}
+      catch(e){if(++tries>3)throw e;await new Promise(function(r){setTimeout(r,2000)});continue}
+      tries=0;
+      if(x.status===308){var rg=x.getResponseHeader("Range");start=rg?(+rg.split("-")[1]+1):end;continue}
+      if(x.status===200||x.status===201){fileId=JSON.parse(x.responseText).id;start=f.size;break}
+      throw new Error("код "+x.status);
+    }
+    if(!fileId)throw new Error("немає id файлу");
+    var d=await api({action:"p_done",code:st.code,id:fileId});
+    if(!d.ok)throw new Error(d.error||"завершення");
+    show("s-done");
+  }catch(e){
+    $("p-st").textContent="Не вдалося завантажити ("+((e&&e.message)||"помилка")+"). Натисніть «Завантажити» ще раз.";
+    $("pfile").disabled=false;b.disabled=false;
+  }
 };
 $("b-home").onclick=function(){$("email").value="";st={email:"",fio:"",olymp:""};show("s-email")};
 document.addEventListener("contextmenu",function(e){if(e.target.closest&&e.target.closest(".pages"))e.preventDefault()});
 syncSchool();loadGeo();
-(function(){var p=new URLSearchParams(location.hash.slice(1)),e=p.get("e");if(e){st.email=e;st.fio=p.get("n")||"";$("email").value=e;if(st.fio)$("fio").value=st.fio;toChoice()}})();
+(function(){var p=new URLSearchParams(location.hash.slice(1)),e=p.get("e");if(e){st.email=e;st.fio=p.get("n")||"";st.teachers=p.get("t")||"";$("email").value=e;if(st.fio)$("fio").value=st.fio;if(st.teachers)$("tch").value=st.teachers;toChoice()}})();
 // enter key on email/name
 $("email").onkeydown=function(e){if(e.key==="Enter")$("b-email").click()};
 $("fio").onkeydown=function(e){if(e.key==="Enter")$("b-name").click()};
