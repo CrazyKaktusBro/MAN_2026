@@ -58,7 +58,7 @@
 <section id="s4">
   <h1>Усе перевірено</h1>
   <p>Неперевірених робіт у цій олімпіаді більше немає.</p>
-  <button id="b4">До вибору олімпіади</button>
+  <button id="b4">Завершити</button>
 </section>
 
 </main>
@@ -121,28 +121,35 @@ $("b1b").onclick=function(){
   $("e1b").textContent="";$("b1b").disabled=true;
   api({action:"g_verify",email:st.email,code:c}).then(function(d){
     if(!d.ok){$("e1b").textContent=d.error==="no folders"?"Для вашого акаунта не знайдено папок із роботами.":"Невірний або прострочений код.";return}
-    st.token=d.token;$("list").innerHTML="";
+    st.token=d.token;st.nOl=d.olymps.length;$("list").innerHTML="";
     d.olymps.forEach(function(o){addOpt($("list"),o,o,"ol")});
-    $("e2").textContent="";show("s2");
+    $("e2").textContent="";
+    if(st.nOl===1){st.olymp=d.olymps[0];loadClasses();return}   // одна олімпіада — сторінку вибору пропускаємо
+    show("s2");
   }).catch(function(){$("e1b").textContent="Немає зв’язку із сервером."}).finally(function(){$("b1b").disabled=false});
 };
 $("cd").onkeydown=function(e){if(e.key==="Enter")$("b1b").click()};
 // 2. олімпіада
 $("back1").onclick=function(){st={};show("s1")};
-$("b2").onclick=function(){
-  var r=document.querySelector("input[name=ol]:checked");
-  if(!r){$("e2").textContent="Оберіть олімпіаду.";return}
-  $("e2").textContent="";st.olymp=r.value;$("b2").disabled=true;
+function loadClasses(){
+  $("b2").disabled=true;$("e2").textContent="";
   api(Object.assign({action:"g_classes",olymp:st.olymp},auth())).then(function(d){
     if(expired(d))return;
-    if(!d.ok){$("e2").textContent=err(d);return}
-    if(!d.list.length){$("e2").textContent="У цій олімпіаді немає папок класів.";return}
+    if(!d.ok){$("e2").textContent=err(d);show("s2");return}
+    if(!d.list.length){$("e2").textContent="У цій олімпіаді немає папок класів.";show("s2");return}
+    st.nCl=d.list.length;
+    if(d.list.length===1){st.only=d.list[0];next();return}      // один клас — сторінку вибору пропускаємо
     var cl=$("clist");cl.innerHTML="";$("e2c").textContent="";
     addOpt(cl,"Усі класи (за порядком)","","kl");
     d.list.forEach(function(k){addOpt(cl,k+" клас",k,"kl")});
     cl.querySelector("input").checked=true;
     show("s2c");
-  }).catch(function(){$("e2").textContent="Немає зв’язку із сервером."}).finally(function(){$("b2").disabled=false});
+  }).catch(function(){$("e2").textContent="Немає зв’язку із сервером.";show("s2")}).finally(function(){$("b2").disabled=false});
+}
+$("b2").onclick=function(){
+  var r=document.querySelector("input[name=ol]:checked");
+  if(!r){$("e2").textContent="Оберіть олімпіаду.";return}
+  st.olymp=r.value;loadClasses();
 };
 $("back2c").onclick=function(){show("s2")};
 $("b2c").onclick=function(){st.only=document.querySelector("input[name=kl]:checked").value;next()};
@@ -208,8 +215,10 @@ $("b3").onclick=function(){
   }).catch(function(){$("e3").textContent="Не вдалося зберегти. Перевірте з’єднання й натисніть ще раз."})
   .finally(function(){$("b3").disabled=false});
 };
-$("back2").onclick=function(){show("s2c")};
-$("b4").onclick=function(){show("s2c")};
+// назад: на вибір класу / олімпіади, якщо вони були; інакше — на вхід
+function leave(){if(st.nCl>1)show("s2c");else if(st.nOl>1)show("s2");else{st={};$("em").value="";show("s1")}}
+$("back2").onclick=leave;
+$("b4").onclick=leave;
 </script>
 </body>
 </html>
