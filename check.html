@@ -108,7 +108,7 @@ $("b1").onclick=function(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){$("e1").textContent="Введіть коректну пошту.";return}
   st.email=e;$("e1").textContent="";$("b1").disabled=true;
   api({action:"g_login",email:e}).then(function(d){
-    if(!d.ok){$("e1").textContent="Введіть коректну пошту.";return}
+    if(!d.ok){$("e1").textContent=d.error==="bad email"?"Введіть коректну пошту.":"Помилка сервера: "+(d.error||"невідома")+". Перевірте, що вставлено новий Results.gs і створено нову версію розгортання.";return}
     $("cd").value="";$("e1b").textContent="";show("s1b");
   }).catch(function(){$("e1").textContent="Немає зв’язку із сервером."}).finally(function(){$("b1").disabled=false});
 };
