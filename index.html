@@ -318,7 +318,7 @@ async function renderPdf(bytes,box){
     tg.onclick=function(){box.classList.toggle("collapsed");lab()};
     lab();box.parentNode.insertBefore(tg,box);
   }
-  var dpr=Math.min(window.devicePixelRatio||1,2),cw=box.clientWidth||700;
+  var dpr=Math.min(window.devicePixelRatio||1,2),cw=Math.min(box.clientWidth||700,1000);
   for(var n=1;n<=pdf.numPages;n++){
     var page=await pdf.getPage(n),v0=page.getViewport({scale:1}),v=page.getViewport({scale:cw*dpr/v0.width});
     var cv=document.createElement("canvas");cv.width=Math.floor(v.width);cv.height=Math.floor(v.height);
