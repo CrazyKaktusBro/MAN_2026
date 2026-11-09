@@ -6,7 +6,74 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Олімпіада</title>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
+<style>
+/* Усі стилі тут (раніше style.css). Кольори — змінні на :root (світла тема) і нижче для темної. Розміри — в rem. */
+:root{--bg:#fff;--fg:#000;--mute:#3a3a3a;--line:#8c8c8c;--acc:#2447d6;--on-acc:#fff;--acc2:#00897b;--ok:#17803a;--warn:#b45f00;--err:#c4161c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff;--mute:#d2d2d2;--line:#757575;--acc:#8fa8ff;--on-acc:#071030;--acc2:#3fd6c8;--ok:#5ad17a;--warn:#ffb74d;--err:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff;--mute:#d2d2d2;--line:#757575;--acc:#8fa8ff;--on-acc:#071030;--acc2:#3fd6c8;--ok:#5ad17a;--warn:#ffb74d;--err:#ff8a80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);font-size:clamp(20px,1.3vw + 12px,34px)}
+*{box-sizing:border-box}
+::selection{background:var(--acc);color:var(--on-acc)}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:400 1.1rem/1.55 Manrope,system-ui,sans-serif}
+main{flex:1;display:flex;flex-direction:column;width:min(100%,max(70vw,420px));max-width:1800px;margin:0 auto;padding:max(4vh,32px) clamp(16px,2vw,40px) 48px}
+main::before{content:"";flex:none;display:block;height:.5rem;margin-bottom:1.6rem;border-radius:.3rem;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+section{display:none;flex-direction:column;gap:2.2rem}
+section.on{display:flex;flex:1;min-height:80vh;min-height:80svh;justify-content:center}
+#s-exam.on,#s3.on{justify-content:flex-start}
+h1{font-weight:600;font-size:3.4rem;line-height:1.1;margin:0;letter-spacing:-.02em;color:var(--acc)}
+h2{font-weight:600;font-size:1.5rem;margin:0}
+p{margin:0;color:var(--mute)}
+input[type=text],input[type=email],input[type=password]{width:100%;border:0;border-bottom:2px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:.55em 0;border-radius:0;outline:0}
+input[type=text]:focus,input[type=email]:focus,input[type=password]:focus,select:focus{border-bottom-color:var(--acc)}
+input:focus-visible,button:focus-visible,label:focus-within{outline:3px solid var(--acc);outline-offset:4px}
+input::placeholder{color:var(--mute);opacity:.75}
+button{font:600 1.4rem Manrope,system-ui,sans-serif;background:var(--acc);color:var(--on-acc);border:2px solid var(--acc);padding:1em 1.2em;min-height:4.2rem;cursor:pointer;width:100%;border-radius:0}
+button.ghost{background:transparent;color:var(--acc)}
+button:hover{opacity:.88}
+button:disabled{opacity:.5;cursor:default}
+.err{color:var(--err);min-height:1.5em;font-size:1.1rem;font-weight:600}
+.ok{color:var(--ok);font-size:1.15rem;font-weight:600}
+.opt{display:flex;gap:1rem;align-items:center;padding:1em .9rem;border-bottom:1px solid var(--line);border-left:.3rem solid transparent;cursor:pointer}
+.opt:hover{background:color-mix(in srgb,var(--acc) 8%,transparent)}
+.opt:has(input:checked){border-left-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent)}
+.opt input{accent-color:var(--acc);width:1.4rem;height:1.4rem;margin:0}
+.task{display:flex;flex-direction:column;gap:12px;padding-bottom:28px;border-bottom:1px solid var(--line);border-left:.35rem solid var(--acc2);padding-left:1rem}
+.task .meta{color:var(--acc2);font-size:.95rem;font-weight:600}
+.back{background:none;border:0;color:var(--mute);width:auto;min-height:0;padding:0;text-align:left;font-weight:400;font-size:1.1rem;text-decoration:underline}
+main.wide{width:min(100%,max(82vw,420px));max-width:2200px}
+.pages{display:flex;flex-direction:column;gap:12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.page{display:block;width:100%;max-width:1000px;margin-inline:auto;height:auto;pointer-events:none;-webkit-user-drag:none;border:1px solid var(--line)}
+@media print{#s-exam .pages{display:none}}
+select{width:100%;border:0;border-bottom:2px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:.55em 0;border-radius:0;outline:0}
+select:focus-visible{outline:3px solid var(--acc);outline-offset:4px}
+select option{background:var(--bg);color:var(--fg)}
+.upbtn{display:inline-block;align-self:flex-start;position:relative;border:2px solid var(--acc);color:var(--acc);padding:.75em 1.2em;cursor:pointer;font-weight:600}
+.upbtn:hover{background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.upbtn input{position:absolute;opacity:0;width:1px;height:1px}
+.fi{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:1rem;word-break:break-all}
+.fi.ph{color:var(--mute)}
+.fi button{flex:none}
+#theme{min-height:0;position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:16px;width:auto;padding:8px 12px;font-size:1rem;font-weight:600;background:var(--bg);color:var(--fg);border:2px solid var(--acc2);z-index:5}
+textarea{width:100%;min-height:max(9rem,18vh);border:2px solid var(--fg);background:transparent;color:var(--fg);font:inherit;padding:.7em;border-radius:0;outline:0;resize:vertical}
+textarea:focus{border-color:var(--acc)}
+textarea:focus-visible{outline:3px solid var(--acc);outline-offset:4px}
+textarea[readonly]{opacity:.6}
+.pages.collapsed{display:none}
+.tgl{width:auto;min-height:0;align-self:flex-start;background:transparent;color:var(--fg);border:2px solid var(--acc2);padding:.5em .9em;font-weight:600;font-size:1rem}
+a.tgl{color:var(--fg);text-decoration:none;display:inline-block}
+progress{width:100%;height:.8rem;accent-color:var(--acc2)}
+a{color:var(--acc)}
+#timer{color:var(--acc);font-weight:600;font-size:1.2rem}
+#mycode{color:var(--acc)}
+/* --- сторінка перевірки (<body class="check">) --- */
+.check main.wide{padding-top:64px}
+.check .task{gap:14px}
+.files{display:flex;flex-direction:column;gap:12px}
+.files img,.files canvas{width:100%;max-width:1200px;margin-inline:auto;height:auto;display:block;border:1px solid var(--line);background:#fff}
+.files pre{white-space:pre-wrap;margin:0;font:inherit;border:1px solid var(--line);padding:12px}
+.score{max-width:10rem}
+</style>
 </head>
 <body>
 <button id="theme" type="button"></button>
