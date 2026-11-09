@@ -187,7 +187,7 @@ async function showFile(box,f){
       var im=new Image();im.alt=f.name;im.src=URL.createObjectURL(new Blob([bytes],{type:"image/"+(ext==="jpg"?"jpeg":ext)}));box.appendChild(im);
     }else if(ext==="pdf"){
       await initPdf();
-      var pdf=await pdfjsLib.getDocument({data:bytes}).promise,cw=box.clientWidth||700,dpr=Math.min(window.devicePixelRatio||1,2);
+      var pdf=await pdfjsLib.getDocument({data:bytes}).promise,cw=Math.min(box.clientWidth||700,1200),dpr=Math.min(window.devicePixelRatio||1,2);
       for(var n=1;n<=pdf.numPages;n++){
         var page=await pdf.getPage(n),v0=page.getViewport({scale:1}),v=page.getViewport({scale:cw*dpr/v0.width});
         var cv=document.createElement("canvas");cv.width=Math.floor(v.width);cv.height=Math.floor(v.height);
