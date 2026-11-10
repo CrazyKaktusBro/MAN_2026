@@ -400,19 +400,6 @@ function endExam(){
     else $("x-err").textContent="Олімпіаду завершено. Збережено все, що встигли ввести.";
   });
 }
-// Час вийшов: блокуємо відповіді й востаннє зберігаємо введений текст; завантажені файли вже збережені
-function endExam(){
-  if(st.ending)return;st.ending=true;clearInterval(tmr);clearInterval(st.tsv);$("timer").textContent="";
-  document.querySelectorAll("#tasks .upbtn").forEach(function(x){x.style.display="none"});
-  document.querySelectorAll("#tasks .fi button").forEach(function(x){x.remove()});
-  document.querySelectorAll("#tasks textarea").forEach(function(x){x.readOnly=true});
-  $("b-send").hidden=true;
-  $("x-err").textContent="Олімпіаду завершено. Зберігаємо останні зміни…";
-  saveTexts(true).then(function(ok){
-    st.locked=true;
-    $("x-err").textContent=ok?"Олімпіаду завершено. Усе, що ви встигли ввести, збережено.":"Олімпіаду завершено. Збережено все до останнього автозбереження.";
-  });
-}
 function startExam(){
   st.locked=false;st.ending=false;clearInterval(tmr);
   function tick(){
